@@ -148,6 +148,12 @@ The dock can start a localhost TCP bridge at:
 
 The MCP tool `godot_bridge_status` checks whether the bridge is reachable.
 
+If the dock does not appear after enabling the plugin, disable and enable `AI MCP Bridge` again. The plugin also adds a menu item:
+
+```text
+Project > Tools > AI MCP Bridge: reload dock
+```
+
 The dock also includes an AI instruction panel. You can write the task inside Godot, choose the target client, and save ready-to-use notes:
 
 - `docs/AI_AGENT_INSTRUCTIONS.md`

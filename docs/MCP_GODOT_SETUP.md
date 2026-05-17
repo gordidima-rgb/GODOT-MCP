@@ -114,6 +114,14 @@ The dock can start a localhost TCP bridge on `127.0.0.1:8765`. It accepts small 
 
 The bridge uses Godot API inside the editor for safe scene/script/node operations. It is intentionally local-only and does not expose arbitrary shell commands.
 
+If the dock does not appear:
+
+1. Disable and enable `AI MCP Bridge` again in `Project > Project Settings > Plugins`.
+2. Check the right-side dock tabs near `Inspector`, `Signals`, and `Groups`.
+3. Use `Project > Tools > AI MCP Bridge: reload dock`.
+4. Open the bottom `Output` panel and look for `AI MCP Bridge plugin loaded`.
+5. If the tab is still missing, restart the Godot editor so it reloads editor plugin scripts.
+
 ## AI Instruction Panel
 
 The same dock has a small instruction workspace:
