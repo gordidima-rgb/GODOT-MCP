@@ -1,5 +1,9 @@
 # GODOT-MCP
 
+<p align="center">
+  <img src="docs/assets/godot-mcp-logo.svg" alt="GODOT-MCP logo" width="760">
+</p>
+
 Godot MCP AI Bridge for safe AI-assisted Godot 4.x development.
 
 Safe local MCP tooling for Godot 4.x projects, designed so Codex or another AI agent can inspect and automate a Godot project without getting direct access to arbitrary shell commands or files outside the project.
@@ -23,6 +27,10 @@ The goal is not to expose every Godot feature at once. The goal is a stable base
 3. Keep destructive actions out.
 4. Queue generation jobs when no real provider is configured.
 5. Use Godot's own editor bridge for richer scene operations.
+
+<p align="center">
+  <img src="docs/assets/architecture.svg" alt="GODOT-MCP architecture diagram" width="900">
+</p>
 
 ## Current Capabilities
 

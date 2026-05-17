@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="320" viewBox="0 0 1100 320" role="img" aria-labelledby="title desc">
+  <title id="title">GODOT-MCP logo</title>
+  <desc id="desc">A safe bridge logo for Godot MCP integration with an AI client, security shield, and project nodes.</desc>
+  <defs>
+    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f7fbff"/>
+      <stop offset="1" stop-color="#eef6f0"/>
+    </linearGradient>
+    <linearGradient id="mark" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3d8bfd"/>
+      <stop offset="0.55" stop-color="#30c48d"/>
+      <stop offset="1" stop-color="#f2c94c"/>
+    </linearGradient>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#17324d" flood-opacity="0.16"/>
+    </filter>
+  </defs>
+
+  <rect width="1100" height="320" rx="34" fill="url(#panel)"/>
+  <rect x="22" y="22" width="1056" height="276" rx="28" fill="#ffffff" stroke="#d7e4ef" stroke-width="2"/>
+
+  <g filter="url(#softShadow)">
+    <path d="M158 58 L252 112 L252 220 L158 274 L64 220 L64 112 Z" fill="url(#mark)"/>
+    <path d="M158 85 L225 124 L225 204 L158 243 L91 204 L91 124 Z" fill="#ffffff" opacity="0.94"/>
+    <path d="M158 112 L202 138 L202 190 L158 216 L114 190 L114 138 Z" fill="#1d3557"/>
+    <path d="M142 151 H174 C189 151 198 161 198 174 C198 187 189 197 174 197 H142 Z" fill="#ffffff"/>
+    <path d="M142 124 H174 C189 124 198 134 198 147 C198 160 189 170 174 170 H142 Z" fill="#ffffff" opacity="0.82"/>
+    <circle cx="116" cy="137" r="8" fill="#30c48d"/>
+    <circle cx="200" cy="137" r="8" fill="#f2c94c"/>
+    <circle cx="116" cy="197" r="8" fill="#3d8bfd"/>
+    <circle cx="200" cy="197" r="8" fill="#30c48d"/>
+    <path d="M124 137 H142 M174 137 H192 M124 197 H142 M174 197 H192" stroke="#1d3557" stroke-width="5" stroke-linecap="round"/>
+    <path d="M158 226 C134 215 122 197 122 172 V151 L158 136 L194 151 V172 C194 197 182 215 158 226 Z" fill="#ffffff" stroke="#1d3557" stroke-width="8" stroke-linejoin="round"/>
+    <path d="M142 177 L154 189 L178 161" fill="none" stroke="#30c48d" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <g>
+    <text x="315" y="132" fill="#162538" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="70" font-weight="800">GODOT-MCP</text>
+    <text x="318" y="184" fill="#476175" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="28" font-weight="600">Safe AI bridge for Godot 4.x projects</text>
+    <g transform="translate(318 218)">
+      <rect width="136" height="38" rx="19" fill="#eaf3ff" stroke="#b8d8ff"/>
+      <text x="22" y="26" fill="#1d5fbf" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="18" font-weight="700">MCP tools</text>
+      <rect x="154" width="152" height="38" rx="19" fill="#eaf8f1" stroke="#b7e6cf"/>
+      <text x="177" y="26" fill="#147a55" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="18" font-weight="700">Editor plugin</text>
+      <rect x="324" width="132" height="38" rx="19" fill="#fff8df" stroke="#f0d57a"/>
+      <text x="349" y="26" fill="#8a6516" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="18" font-weight="700">Providers</text>
+      <rect x="474" width="142" height="38" rx="19" fill="#f4efff" stroke="#d7c7ff"/>
+      <text x="500" y="26" fill="#5d43aa" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="18" font-weight="700">Sandbox</text>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" role="img" aria-labelledby="title desc">
+  <title id="title">GODOT-MCP architecture diagram</title>
+  <desc id="desc">Architecture flow showing AI clients connecting to a local MCP server, security layer, Godot project files, editor bridge, and asset providers.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f8fbff"/>
+      <stop offset="0.55" stop-color="#f2f9f5"/>
+      <stop offset="1" stop-color="#fffaf0"/>
+    </linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#5d7285"/>
+    </marker>
+    <filter id="shadow" x="-12%" y="-18%" width="124%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#17324d" flood-opacity="0.12"/>
+    </filter>
+    <style>
+      .title { font: 800 34px "Segoe UI", Inter, Arial, sans-serif; fill: #17253a; }
+      .subtitle { font: 600 18px "Segoe UI", Inter, Arial, sans-serif; fill: #567085; }
+      .box-title { font: 800 21px "Segoe UI", Inter, Arial, sans-serif; fill: #17253a; }
+      .box-text { font: 600 15px "Segoe UI", Inter, Arial, sans-serif; fill: #52687a; }
+      .tiny { font: 700 13px "Segoe UI", Inter, Arial, sans-serif; fill: #607687; }
+      .card { fill: #ffffff; stroke: #d8e5ee; stroke-width: 2; filter: url(#shadow); }
+      .line { fill: none; stroke: #5d7285; stroke-width: 3; marker-end: url(#arrow); }
+    </style>
+  </defs>
+
+  <rect width="1280" height="720" rx="32" fill="url(#bg)"/>
+  <text x="54" y="72" class="title">GODOT-MCP Architecture</text>
+  <text x="56" y="105" class="subtitle">Safe local bridge for Codex, Visual Studio / VS Code, Claude, and Godot 4.x projects</text>
+
+  <g transform="translate(54 150)">
+    <rect class="card" width="246" height="158" rx="18"/>
+    <circle cx="45" cy="49" r="18" fill="#3d8bfd"/>
+    <circle cx="91" cy="49" r="18" fill="#30c48d"/>
+    <circle cx="137" cy="49" r="18" fill="#7b61ff"/>
+    <text x="26" y="95" class="box-title">AI Client</text>
+    <text x="26" y="122" class="box-text">Codex</text>
+    <text x="89" y="122" class="box-text">VS Code</text>
+    <text x="167" y="122" class="box-text">Claude</text>
+  </g>
+
+  <g transform="translate(386 130)">
+    <rect class="card" width="296" height="198" rx="20"/>
+    <rect x="26" y="28" width="82" height="50" rx="12" fill="#eaf3ff" stroke="#b8d8ff"/>
+    <rect x="128" y="28" width="142" height="50" rx="12" fill="#eefaf3" stroke="#b7e6cf"/>
+    <text x="31" y="60" class="tiny">stdio</text>
+    <text x="143" y="60" class="tiny">JSON-RPC</text>
+    <text x="26" y="116" class="box-title">MCP Server</text>
+    <text x="26" y="145" class="box-text">tools/mcp-godot</text>
+    <text x="26" y="170" class="box-text">scan, scenes, scripts, imports</text>
+  </g>
+
+  <g transform="translate(770 130)">
+    <rect class="card" width="292" height="198" rx="20"/>
+    <path d="M70 36 C100 50 130 50 160 36 V84 C160 119 139 142 115 154 C91 142 70 119 70 84 Z" fill="#f4efff" stroke="#7b61ff" stroke-width="3"/>
+    <path d="M96 92 L111 108 L139 75" fill="none" stroke="#30c48d" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="26" y="116" class="box-title">Security Layer</text>
+    <text x="26" y="145" class="box-text">path sandbox, no shell</text>
+    <text x="26" y="170" class="box-text">read-only mode, secret masking</text>
+  </g>
+
+  <g transform="translate(770 420)">
+    <rect class="card" width="292" height="190" rx="20"/>
+    <rect x="28" y="32" width="72" height="54" rx="10" fill="#eaf3ff" stroke="#b8d8ff"/>
+    <rect x="110" y="32" width="72" height="54" rx="10" fill="#eefaf3" stroke="#b7e6cf"/>
+    <rect x="192" y="32" width="72" height="54" rx="10" fill="#fff8df" stroke="#f0d57a"/>
+    <text x="42" y="64" class="tiny">tscn</text>
+    <text x="127" y="64" class="tiny">gd</text>
+    <text x="205" y="64" class="tiny">assets</text>
+    <text x="26" y="122" class="box-title">Godot Project</text>
+    <text x="26" y="151" class="box-text">scenes, scripts, textures</text>
+    <text x="26" y="176" class="box-text">generation_jobs when providers are none</text>
+  </g>
+
+  <g transform="translate(386 420)">
+    <rect class="card" width="296" height="190" rx="20"/>
+    <rect x="30" y="32" width="236" height="58" rx="13" fill="#eaf8f1" stroke="#b7e6cf"/>
+    <circle cx="62" cy="61" r="12" fill="#30c48d"/>
+    <rect x="92" y="51" width="144" height="20" rx="10" fill="#ffffff" stroke="#c6d9d0"/>
+    <text x="26" y="122" class="box-title">Godot Editor Plugin</text>
+    <text x="26" y="151" class="box-text">localhost bridge, dock panel</text>
+    <text x="26" y="176" class="box-text">AI instructions and command logs</text>
+  </g>
+
+  <g transform="translate(82 420)">
+    <rect class="card" width="246" height="190" rx="20"/>
+    <path d="M40 76 C58 45 105 45 122 76 C139 45 187 45 205 76 C213 91 209 111 194 123 L122 181 L50 123 C34 111 31 91 40 76 Z" fill="#fff8df" stroke="#f0d57a" stroke-width="3"/>
+    <text x="26" y="122" class="box-title">Providers</text>
+    <text x="26" y="151" class="box-text">OpenAI, custom HTTP</text>
+    <text x="26" y="176" class="box-text">Tripo, Meshy, local ComfyUI</text>
+  </g>
+
+  <path class="line" d="M300 229 H376"/>
+  <path class="line" d="M682 229 H760"/>
+  <path class="line" d="M916 328 V410"/>
+  <path class="line" d="M770 514 H692"/>
+  <path class="line" d="M386 514 H338"/>
+  <path class="line" d="M534 420 V338"/>
+  <path class="line" d="M1062 514 C1135 514 1168 468 1168 378 C1168 285 1125 229 1072 229"/>
+
+  <g transform="translate(480 350)">
+    <rect width="318" height="48" rx="24" fill="#ffffff" stroke="#d8e5ee" stroke-width="2"/>
+    <text x="25" y="31" class="tiny">inspect first, mutate safely, validate after changes</text>
+  </g>
+</svg>
