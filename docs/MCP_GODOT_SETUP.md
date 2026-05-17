@@ -25,6 +25,34 @@ The local Godot MCP server runs with Node.js over stdio:
 
 Restart Codex after changing `C:\Users\gdima\.codex\config.toml`.
 
+## Add Godot To PATH
+
+Installers and zipped Godot builds do not always add Godot to `PATH`. Add it before relying on MCP tools that run the editor:
+
+```powershell
+godot --version
+```
+
+If that command is not found on Windows, add the folder that contains `Godot_v4.x-stable_win64.exe` to the user `PATH`, then restart Codex, Godot, and your terminal.
+
+Example for a downloaded Godot executable in `C:\Users\gdima\Downloads`:
+
+```powershell
+[Environment]::SetEnvironmentVariable(
+  "Path",
+  [Environment]::GetEnvironmentVariable("Path", "User") + ";C:\Users\gdima\Downloads",
+  "User"
+)
+```
+
+Then either rename/copy the executable so it can be called as `godot`, or set `.env` explicitly:
+
+```text
+GODOT_CLI=C:\Users\gdima\Downloads\Godot_v4.6.2-stable_win64.exe
+```
+
+After this, `godot_check_errors` can run a real headless editor check and `godot_run_project` can launch scenes. Without it, the MCP server falls back to static validation only.
+
 ## Available MCP Tools
 
 - `godot_help`

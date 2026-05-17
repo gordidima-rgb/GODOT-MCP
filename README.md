@@ -96,6 +96,24 @@ No API keys are committed. Use `.env.example` as the template.
 
 ## Quick Start
 
+Make sure the Godot executable is available on `PATH` before using run/check tools:
+
+```powershell
+godot --version
+```
+
+On Windows, if Godot is a downloaded `.exe`, add its folder to the user `PATH`, then restart Codex and your terminal. Example for the current local layout:
+
+```powershell
+[Environment]::SetEnvironmentVariable(
+  "Path",
+  [Environment]::GetEnvironmentVariable("Path", "User") + ";C:\Users\gdima\Downloads",
+  "User"
+)
+```
+
+After that, `godot_check_errors` can run the real Godot headless check and `godot_run_project` can launch scenes. If you cannot modify `PATH`, set `GODOT_CLI` in `.env` to the full executable path.
+
 Run the smoke test from the project root:
 
 ```powershell
