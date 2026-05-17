@@ -6,6 +6,8 @@
 
 Godot MCP AI Bridge for safe AI-assisted Godot 4.x development.
 
+Current version: `0.3.0`
+
 Safe local MCP tooling for Godot 4.x projects, designed so Codex or another AI agent can inspect and automate a Godot project without getting direct access to arbitrary shell commands or files outside the project.
 
 This repository contains:
@@ -166,6 +168,10 @@ Supported client presets:
 - Claude
 
 The dock also includes an editor chat panel. It does not talk to Codex directly. It reads `AI_CHAT_*` settings from `.env` and can call an OpenAI-compatible `/chat/completions` endpoint. If `AI_CHAT_PROVIDER=none`, chat prompts are saved as JSON jobs under `generation_jobs/chat/` without network access.
+
+<p align="center">
+  <img src="docs/assets/screenshots/ai-mcp-bridge-0.3.0.svg" alt="AI MCP Bridge dock screenshot" width="520">
+</p>
 
 ## Providers
 
