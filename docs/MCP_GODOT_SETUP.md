@@ -113,3 +113,14 @@ The dock can start a localhost TCP bridge on `127.0.0.1:8765`. It accepts small 
 ```
 
 The bridge uses Godot API inside the editor for safe scene/script/node operations. It is intentionally local-only and does not expose arbitrary shell commands.
+
+## AI Instruction Panel
+
+The same dock has a small instruction workspace:
+
+1. Choose the client preset: `Codex`, `Visual Studio / VS Code`, or `Claude`.
+2. Write the instruction for the AI agent.
+3. Press `Save instruction` to write `docs/AI_AGENT_INSTRUCTIONS.md`.
+4. Press `Save client setup` to write `docs/AI_CLIENT_SETUP.md`.
+
+This lets you prepare a reusable prompt and client setup notes without leaving Godot. The saved files are plain Markdown, so they can be reviewed before giving them to any AI client.

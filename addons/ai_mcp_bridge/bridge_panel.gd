@@ -3,7 +3,10 @@ extends VBoxContainer
 
 const DEFAULT_PORT := 8765
 const MAX_HISTORY := 8
+const INSTRUCTIONS_PATH := "res://docs/AI_AGENT_INSTRUCTIONS.md"
+const CLIENT_SETUP_PATH := "res://docs/AI_CLIENT_SETUP.md"
 const ALLOWED_ROOT_TYPES := ["Node2D", "Node3D", "Control", "CharacterBody2D", "CharacterBody3D"]
+const CLIENT_NAMES := ["Codex", "Visual Studio / VS Code", "Claude"]
 
 var _running := false
 var _server := TCPServer.new()
@@ -15,6 +18,9 @@ var _status_label: Label
 var _port_label: Label
 var _commands_label: RichTextLabel
 var _errors_label: RichTextLabel
+var _client_select: OptionButton
+var _client_setup_label: RichTextLabel
+var _instruction_edit: TextEdit
 var _start_button: Button
 var _stop_button: Button
 
@@ -57,6 +63,8 @@ func _build_ui() -> void:
     _stop_button.pressed.connect(_on_stop_pressed)
     row.add_child(_stop_button)
 
+    _build_instruction_ui()
+
     var commands_title := Label.new()
     commands_title.text = "Last commands"
     add_child(commands_title)
@@ -74,6 +82,49 @@ func _build_ui() -> void:
     _errors_label.custom_minimum_size = Vector2(260, 110)
     _errors_label.fit_content = true
     add_child(_errors_label)
+
+func _build_instruction_ui() -> void:
+    var separator := HSeparator.new()
+    add_child(separator)
+
+    var client_title := Label.new()
+    client_title.text = "AI client"
+    add_child(client_title)
+
+    _client_select = OptionButton.new()
+    for client_name in CLIENT_NAMES:
+        _client_select.add_item(String(client_name))
+    _client_select.item_selected.connect(_on_client_selected)
+    add_child(_client_select)
+
+    _client_setup_label = RichTextLabel.new()
+    _client_setup_label.custom_minimum_size = Vector2(360, 120)
+    _client_setup_label.fit_content = true
+    add_child(_client_setup_label)
+
+    var setup_button := Button.new()
+    setup_button.text = "Save client setup"
+    setup_button.tooltip_text = "Write docs/AI_CLIENT_SETUP.md with setup notes for the selected client."
+    setup_button.pressed.connect(_on_save_client_setup_pressed)
+    add_child(setup_button)
+
+    var instruction_title := Label.new()
+    instruction_title.text = "Instruction for AI agent"
+    add_child(instruction_title)
+
+    _instruction_edit = TextEdit.new()
+    _instruction_edit.custom_minimum_size = Vector2(360, 150)
+    _instruction_edit.placeholder_text = "Describe what the AI should build, inspect, or fix in this Godot project."
+    _instruction_edit.text = _default_instruction_text()
+    add_child(_instruction_edit)
+
+    var save_instruction_button := Button.new()
+    save_instruction_button.text = "Save instruction"
+    save_instruction_button.tooltip_text = "Write docs/AI_AGENT_INSTRUCTIONS.md for Codex, VS Code, or Claude."
+    save_instruction_button.pressed.connect(_on_save_instruction_pressed)
+    add_child(save_instruction_button)
+
+    _on_client_selected(0)
 
 func _on_start_pressed() -> void:
     # This bridge listens only on localhost. It is for editor-side commands, not public networking.
@@ -116,6 +167,110 @@ func _refresh_history() -> void:
         return
     _commands_label.text = "\n".join(_last_commands) if not _last_commands.is_empty() else "No commands yet."
     _errors_label.text = "\n".join(_last_errors) if not _last_errors.is_empty() else "No errors yet."
+
+func _on_client_selected(_index: int) -> void:
+    if _client_setup_label == null:
+        return
+    _client_setup_label.text = _client_setup_text(_current_client_name())
+
+func _on_save_instruction_pressed() -> void:
+    var content := _instruction_edit.text.strip_edges()
+    if content.is_empty():
+        content = _default_instruction_text()
+    var header := "# AI Agent Instructions\n\n"
+    header += "Selected client: %s\n\n" % _current_client_name()
+    header += "Project root: `%s`\n\n" % _project_root_for_docs()
+    var result := _write_text_file(INSTRUCTIONS_PATH, header + content + "\n")
+    if bool(result.get("ok", false)):
+        record_command("Saved AI instructions to %s" % INSTRUCTIONS_PATH)
+    else:
+        record_error(String(result.get("error", "Could not save AI instructions.")))
+
+func _on_save_client_setup_pressed() -> void:
+    var content := "# AI Client Setup\n\n"
+    content += _client_setup_text(_current_client_name())
+    content += "\n\n## Shared Rules\n\n"
+    content += "- Use Godot 4.x APIs only.\n"
+    content += "- Keep all file changes inside the project root.\n"
+    content += "- Never write real API keys to source files or logs.\n"
+    content += "- Start with project scan, scene list, and error checks before larger edits.\n"
+    var result := _write_text_file(CLIENT_SETUP_PATH, content)
+    if bool(result.get("ok", false)):
+        record_command("Saved client setup to %s" % CLIENT_SETUP_PATH)
+    else:
+        record_error(String(result.get("error", "Could not save client setup.")))
+
+func _current_client_name() -> String:
+    if _client_select == null:
+        return String(CLIENT_NAMES[0])
+    var selected := _client_select.selected
+    if selected < 0 or selected >= CLIENT_NAMES.size():
+        return String(CLIENT_NAMES[0])
+    return String(CLIENT_NAMES[selected])
+
+func _default_instruction_text() -> String:
+    var lines := [
+        "Work with this Godot 4.x project through the safe MCP tools.",
+        "First inspect the project, list scenes and scripts, then make small scoped changes.",
+        "Do not delete existing files unless the user explicitly asks for it.",
+        "When creating scripts, add short comments that help a beginner understand the code.",
+        "If image or 3D generation providers are set to none, save generation jobs instead of calling external APIs."
+    ]
+    return "\n".join(lines)
+
+func _client_setup_text(client_name: String) -> String:
+    var project_root := _project_root_for_docs()
+    match client_name:
+        "Codex":
+            return "\n".join([
+                "Use this MCP server from Codex:",
+                "",
+                "```toml",
+                "[mcp_servers.godotMCP]",
+                "command = \"node\"",
+                "args = [ \"" + project_root + "/tools/mcp-godot/src/server.mjs\", \"--project-root\", \"" + project_root + "\" ]",
+                "startup_timeout_sec = 20",
+                "```",
+                "",
+                "Then restart Codex and ask it to run `godot_project_scan` first."
+            ])
+        "Visual Studio / VS Code":
+            return "\n".join([
+                "Use the MCP server with a Visual Studio or VS Code extension that supports MCP stdio servers.",
+                "",
+                "Server command:",
+                "`node " + project_root + "/tools/mcp-godot/src/server.mjs --project-root " + project_root + "`",
+                "",
+                "Keep provider keys in `.env`; do not paste secrets into editor prompts."
+            ])
+        "Claude":
+            return "\n".join([
+                "Add this project as a local stdio MCP server in Claude Desktop or another Claude MCP client.",
+                "",
+                "Server command:",
+                "`node " + project_root + "/tools/mcp-godot/src/server.mjs --project-root " + project_root + "`",
+                "",
+                "After reconnecting, start with `godot_help` and `godot_project_scan`."
+            ])
+        _:
+            return "Select a supported AI client."
+
+func _write_text_file(res_path: String, content: String) -> Dictionary:
+    if not _is_safe_res_path(res_path, ".md"):
+        return _error_response("Unsafe documentation path.")
+    var docs_dir := ProjectSettings.globalize_path("res://docs")
+    var dir_error := DirAccess.make_dir_recursive_absolute(docs_dir)
+    if dir_error != OK:
+        return _error_response("Could not create docs folder: %s" % error_string(dir_error))
+    var file := FileAccess.open(res_path, FileAccess.WRITE)
+    if file == null:
+        return _error_response("Could not open documentation file for writing.")
+    file.store_string(content)
+    file.close()
+    return {"ok": true, "path": res_path}
+
+func _project_root_for_docs() -> String:
+    return ProjectSettings.globalize_path("res://").replace("\\", "/").trim_suffix("/")
 
 func _accept_new_clients() -> void:
     while _server.is_connection_available():

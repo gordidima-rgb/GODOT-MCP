@@ -5,7 +5,7 @@ Safe local MCP tooling for Godot 4.x projects, designed so Codex or another AI a
 This repository contains:
 
 - A dependency-light MCP stdio server for Godot project automation.
-- A Godot EditorPlugin bridge skeleton for editor-side operations.
+- A Godot EditorPlugin bridge for editor-side operations and AI instructions.
 - Project-specific agent skills and beginner-oriented docs.
 - Safe provider interfaces for image/sprite/texture and 3D model generation.
 - A conservative security layer for paths, secrets, and command execution.
@@ -138,6 +138,17 @@ The dock can start a localhost TCP bridge at:
 
 The MCP tool `godot_bridge_status` checks whether the bridge is reachable.
 
+The dock also includes an AI instruction panel. You can write the task inside Godot, choose the target client, and save ready-to-use notes:
+
+- `docs/AI_AGENT_INSTRUCTIONS.md`
+- `docs/AI_CLIENT_SETUP.md`
+
+Supported client presets:
+
+- Codex
+- Visual Studio / VS Code
+- Claude
+
 ## Providers
 
 Supported image provider names:
@@ -197,6 +208,7 @@ If Godot CLI is not available, `godot_check_errors` still runs static validation
 - Optional LSP/DAP/ClassDB integrations.
 - More provider adapters behind the existing safe interface.
 - Tool profiles for compact/full client modes if the tool surface grows.
+- Deeper editor-side workflows started directly from the AI instruction panel.
 
 ## License
 
