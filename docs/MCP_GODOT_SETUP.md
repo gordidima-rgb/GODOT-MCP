@@ -52,12 +52,14 @@ Use `.env` for provider settings. The safe default is:
 ```text
 IMAGE_PROVIDER=none
 MODEL_3D_PROVIDER=none
+AI_CHAT_PROVIDER=none
 ```
 
 When provider is `none`, no real asset generation happens. The MCP server writes a JSON prompt job into:
 
 - `generation_jobs/images/`
 - `generation_jobs/models/`
+- `generation_jobs/chat/`
 
 Provider notes:
 
@@ -67,6 +69,19 @@ Provider notes:
 - 3D model providers currently queue jobs by design unless a project-specific adapter is added.
 
 Image adapters live in `tools/mcp-godot/src/provider_adapters/`. This keeps provider-specific HTTP/API code separate from the MCP tool definitions.
+
+The Godot editor chat panel reads these optional variables:
+
+```text
+AI_CHAT_PROVIDER=none
+AI_CHAT_BASE_URL=http://127.0.0.1:1234/v1
+AI_CHAT_API_KEY=
+AI_CHAT_MODEL=
+AI_CHAT_TEMPERATURE=0.2
+AI_CHAT_SYSTEM_PROMPT=You are an AI assistant embedded in the Godot editor.
+```
+
+Set `AI_CHAT_PROVIDER=openai_compatible` to call a local or remote OpenAI-compatible `/chat/completions` endpoint. Leave it as `none` to save chat prompts as JSON jobs without network access.
 
 ## Run The Smoke Test
 
@@ -132,3 +147,16 @@ The same dock has a small instruction workspace:
 4. Press `Save client setup` to write `docs/AI_CLIENT_SETUP.md`.
 
 This lets you prepare a reusable prompt and client setup notes without leaving Godot. The saved files are plain Markdown, so they can be reviewed before giving them to any AI client.
+
+## Editor Chat Panel
+
+The dock includes an editor chat panel for local AI/API providers.
+
+1. Copy `.env.example` to `.env`.
+2. Keep `AI_CHAT_PROVIDER=none` for offline queue mode, or set `AI_CHAT_PROVIDER=openai_compatible`.
+3. Fill `AI_CHAT_BASE_URL` and `AI_CHAT_MODEL`.
+4. Set `AI_CHAT_API_KEY` only if your provider requires it.
+5. Press `Reload .env` in the Godot dock.
+6. Write a prompt and press `Send`.
+
+When the provider is `none`, `Send` and `Queue` save a JSON file in `generation_jobs/chat/`. The chat panel never writes secrets to logs.

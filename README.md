@@ -165,6 +165,8 @@ Supported client presets:
 - Visual Studio / VS Code
 - Claude
 
+The dock also includes an editor chat panel. It does not talk to Codex directly. It reads `AI_CHAT_*` settings from `.env` and can call an OpenAI-compatible `/chat/completions` endpoint. If `AI_CHAT_PROVIDER=none`, chat prompts are saved as JSON jobs under `generation_jobs/chat/` without network access.
+
 ## Providers
 
 Supported image provider names:
@@ -185,6 +187,20 @@ Supported 3D provider names:
 When provider is `none`, no real asset generation happens. The request is saved as a JSON job under `generation_jobs/`.
 
 Real keys must come from `.env` or environment variables, never source files.
+
+Editor chat provider names:
+
+- `none`
+- `openai_compatible`
+
+Required `.env` fields for live editor chat:
+
+```text
+AI_CHAT_PROVIDER=openai_compatible
+AI_CHAT_BASE_URL=http://127.0.0.1:1234/v1
+AI_CHAT_MODEL=your-local-model
+AI_CHAT_API_KEY=
+```
 
 ## Security Model
 

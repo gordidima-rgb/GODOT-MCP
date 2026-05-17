@@ -64,6 +64,7 @@ func _build_ui() -> void:
     row.add_child(_stop_button)
 
     _build_instruction_ui()
+    _build_chat_ui()
 
     var commands_title := Label.new()
     commands_title.text = "Last commands"
@@ -125,6 +126,29 @@ func _build_instruction_ui() -> void:
     add_child(save_instruction_button)
 
     _on_client_selected(0)
+
+func _build_chat_ui() -> void:
+    var separator := HSeparator.new()
+    add_child(separator)
+
+    var chat_script := load("res://addons/ai_mcp_bridge/chat_panel.gd") as GDScript
+    if chat_script == null:
+        var error_label := Label.new()
+        error_label.text = "Editor chat could not load. Check the Output panel."
+        error_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        add_child(error_label)
+        record_error("Could not load chat_panel.gd.")
+        return
+
+    var chat_panel := chat_script.new() as Control
+    if chat_panel == null:
+        var error_label := Label.new()
+        error_label.text = "Editor chat could not start. Check the Output panel."
+        error_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        add_child(error_label)
+        record_error("Could not create chat panel.")
+        return
+    add_child(chat_panel)
 
 func _on_start_pressed() -> void:
     # This bridge listens only on localhost. It is for editor-side commands, not public networking.
