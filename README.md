@@ -1,4 +1,6 @@
-# Godot MCP AI Bridge
+# GODOT-MCP
+
+Godot MCP AI Bridge for safe AI-assisted Godot 4.x development.
 
 Safe local MCP tooling for Godot 4.x projects, designed so Codex or another AI agent can inspect and automate a Godot project without getting direct access to arbitrary shell commands or files outside the project.
 
