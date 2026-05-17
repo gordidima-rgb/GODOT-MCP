@@ -1,0 +1,80 @@
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://scripts/third_person_capsule_controller.gd" id="1_controller"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_player"]
+albedo_color = Color(0.28, 0.55, 0.94, 1)
+roughness = 0.55
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_marker"]
+albedo_color = Color(0.22, 0.95, 0.56, 1)
+roughness = 0.45
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ground"]
+albedo_color = Color(0.25, 0.34, 0.30, 1)
+roughness = 0.8
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_player"]
+radius = 0.45
+height = 1.8
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_player"]
+radius = 0.45
+height = 1.8
+
+[sub_resource type="BoxMesh" id="BoxMesh_marker"]
+size = Vector3(0.22, 0.18, 0.08)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_ground"]
+size = Vector3(24, 0.2, 24)
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_ground"]
+size = Vector2(24, 24)
+
+[node name="ThirdPersonCapsuleTest" type="Node3D"]
+
+[node name="Ground" type="StaticBody3D" parent="."]
+
+[node name="GroundMesh" type="MeshInstance3D" parent="Ground"]
+mesh = SubResource("PlaneMesh_ground")
+material_override = SubResource("StandardMaterial3D_ground")
+
+[node name="GroundCollision" type="CollisionShape3D" parent="Ground"]
+position = Vector3(0, -0.1, 0)
+shape = SubResource("BoxShape3D_ground")
+
+[node name="Player" type="CharacterBody3D" parent="."]
+position = Vector3(0, 1, 0)
+script = ExtResource("1_controller")
+
+[node name="CapsuleMesh" type="MeshInstance3D" parent="Player"]
+mesh = SubResource("CapsuleMesh_player")
+material_override = SubResource("StandardMaterial3D_player")
+
+[node name="ForwardMarker" type="MeshInstance3D" parent="Player"]
+position = Vector3(0, 0.35, -0.48)
+mesh = SubResource("BoxMesh_marker")
+material_override = SubResource("StandardMaterial3D_marker")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Player"]
+shape = SubResource("CapsuleShape3D_player")
+
+[node name="CameraRig" type="Node3D" parent="."]
+position = Vector3(0, 2.35, 0)
+
+[node name="CameraPitch" type="Node3D" parent="CameraRig"]
+rotation = Vector3(-0.20944, 0, 0)
+
+[node name="Camera3D" type="Camera3D" parent="CameraRig/CameraPitch"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 4.5)
+current = true
+fov = 70.0
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+rotation = Vector3(-0.872665, -0.523599, 0)
+light_energy = 2.2
+
+[node name="FillLight" type="OmniLight3D" parent="."]
+position = Vector3(2.5, 4, 2.5)
+light_energy = 0.7
+omni_range = 8.0
