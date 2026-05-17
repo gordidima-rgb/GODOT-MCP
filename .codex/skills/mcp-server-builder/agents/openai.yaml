@@ -1,0 +1,4 @@
+interface:
+  display_name: "mcp-server-builder"
+  short_description: "Project workflow for mcp-server-builder"
+  default_prompt: "Use the mcp-server-builder workflow for this Godot MCP project."

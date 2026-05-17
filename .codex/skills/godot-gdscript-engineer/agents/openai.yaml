@@ -1,0 +1,4 @@
+interface:
+  display_name: "godot-gdscript-engineer"
+  short_description: "Project workflow for godot-gdscript-engineer"
+  default_prompt: "Use the godot-gdscript-engineer workflow for this Godot MCP project."

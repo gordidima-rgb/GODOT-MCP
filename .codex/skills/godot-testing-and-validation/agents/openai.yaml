@@ -1,0 +1,4 @@
+interface:
+  display_name: "godot-testing-and-validation"
+  short_description: "Project workflow for godot-testing-and-validation"
+  default_prompt: "Use the godot-testing-and-validation workflow for this Godot MCP project."

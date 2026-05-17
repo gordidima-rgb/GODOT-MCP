@@ -1,0 +1,4 @@
+interface:
+  display_name: "docs-for-beginner"
+  short_description: "Project workflow for docs-for-beginner"
+  default_prompt: "Use the docs-for-beginner workflow for this Godot MCP project."

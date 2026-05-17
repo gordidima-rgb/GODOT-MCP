@@ -1,0 +1,4 @@
+interface:
+  display_name: "security-sandbox"
+  short_description: "Project workflow for security-sandbox"
+  default_prompt: "Use the security-sandbox workflow for this Godot MCP project."

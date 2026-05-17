@@ -1,0 +1,4 @@
+interface:
+  display_name: "asset-pipeline-2d-3d"
+  short_description: "Project workflow for asset-pipeline-2d-3d"
+  default_prompt: "Use the asset-pipeline-2d-3d workflow for this Godot MCP project."

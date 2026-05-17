@@ -1,0 +1,4 @@
+interface:
+  display_name: "image-generation-provider"
+  short_description: "Project workflow for image-generation-provider"
+  default_prompt: "Use the image-generation-provider workflow for this Godot MCP project."

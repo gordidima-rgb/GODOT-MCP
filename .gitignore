@@ -1,0 +1,9 @@
+.env
+.env.*
+!.env.example
+
+.godot/
+.import/
+
+tools/mcp-godot/.tmp-*/
+generation_jobs/**/*.tmp

@@ -1,0 +1,4 @@
+interface:
+  display_name: "godot-project-architect"
+  short_description: "Project workflow for godot-project-architect"
+  default_prompt: "Use the godot-project-architect workflow for this Godot MCP project."

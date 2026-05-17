@@ -1,0 +1,4 @@
+interface:
+  display_name: "model-3d-generation-provider"
+  short_description: "Project workflow for model-3d-generation-provider"
+  default_prompt: "Use the model-3d-generation-provider workflow for this Godot MCP project."

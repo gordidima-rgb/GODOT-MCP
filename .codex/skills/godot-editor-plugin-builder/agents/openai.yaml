@@ -1,0 +1,4 @@
+interface:
+  display_name: "godot-editor-plugin-builder"
+  short_description: "Project workflow for godot-editor-plugin-builder"
+  default_prompt: "Use the godot-editor-plugin-builder workflow for this Godot MCP project."
