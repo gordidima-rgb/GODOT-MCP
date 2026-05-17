@@ -21,6 +21,7 @@ var _errors_label: RichTextLabel
 var _client_select: OptionButton
 var _client_setup_label: RichTextLabel
 var _instruction_edit: TextEdit
+var _quick_guide_label: RichTextLabel
 var _start_button: Button
 var _stop_button: Button
 
@@ -43,6 +44,8 @@ func _build_ui() -> void:
     title.text = "AI MCP Bridge"
     title.add_theme_font_size_override("font_size", 18)
     add_child(title)
+
+    _build_quick_guide_ui()
 
     _status_label = Label.new()
     add_child(_status_label)
@@ -83,6 +86,14 @@ func _build_ui() -> void:
     _errors_label.custom_minimum_size = Vector2(260, 110)
     _errors_label.fit_content = true
     add_child(_errors_label)
+
+func _build_quick_guide_ui() -> void:
+    _quick_guide_label = RichTextLabel.new()
+    _quick_guide_label.custom_minimum_size = Vector2(360, 118)
+    _quick_guide_label.fit_content = true
+    _quick_guide_label.bbcode_enabled = false
+    add_child(_quick_guide_label)
+    _refresh_quick_guide()
 
 func _build_instruction_ui() -> void:
     var separator := HSeparator.new()
@@ -184,6 +195,7 @@ func _refresh_status() -> void:
     _port_label.text = "Port: %d on 127.0.0.1" % DEFAULT_PORT
     _start_button.disabled = _running
     _stop_button.disabled = not _running
+    _refresh_quick_guide()
     _refresh_history()
 
 func _refresh_history() -> void:
@@ -191,6 +203,18 @@ func _refresh_history() -> void:
         return
     _commands_label.text = "\n".join(_last_commands) if not _last_commands.is_empty() else "No commands yet."
     _errors_label.text = "\n".join(_last_errors) if not _last_errors.is_empty() else "No errors yet."
+
+func _refresh_quick_guide() -> void:
+    if _quick_guide_label == null:
+        return
+    var bridge_step := "done" if _running else "click Start"
+    _quick_guide_label.text = "\n".join([
+        "Mini guide: 1, 2, 3",
+        "1. Bridge: " + bridge_step + ".",
+        "2. Pick client: Codex, then click Save client setup.",
+        "3. Copy docs/AI_CLIENT_SETUP.md into Codex config, restart Codex, then ask: run godot_project_scan.",
+        "Optional: for local chat, keep provider none and press Queue, or set AI_CHAT_* in .env and press Reload .env."
+    ])
 
 func _on_client_selected(_index: int) -> void:
     if _client_setup_label == null:
