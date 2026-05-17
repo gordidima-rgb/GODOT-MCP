@@ -6,9 +6,9 @@ import fs from "node:fs/promises";
 import net from "node:net";
 import path from "node:path";
 import { createGenerationJob, generateImageWithProvider, generateModelWithProvider, IMAGE_PROVIDERS, MODEL_3D_PROVIDERS } from "./providers.mjs";
-import { isAllowedGodotCli, safeFilenamePart, sanitizeForLog } from "./security.mjs";
+import { isAllowedGodotCli, safeFilenamePart, safeTimestamp, sanitizeForLog } from "./security.mjs";
 
-const SERVER_VERSION = "0.2.0";
+const SERVER_VERSION = "0.3.1";
 const SUPPORTED_PROTOCOLS = new Set(["2025-06-18", "2025-03-26", "2024-11-05"]);
 const DEFAULT_PROTOCOL = "2025-06-18";
 const MAX_TEXT_BYTES = 1024 * 1024;
@@ -16,6 +16,7 @@ const MAX_IMAGE_BYTES = 32 * 1024 * 1024;
 const MAX_MODEL_BYTES = 256 * 1024 * 1024;
 const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".webp", ".svg"]);
 const MODEL_EXTENSIONS = new Set([".glb", ".gltf", ".obj", ".fbx"]);
+const SCREENSHOT_EXTENSIONS = new Set([".png"]);
 const SCENE_EXTENSIONS = new Set([".tscn", ".scn"]);
 const SCRIPT_EXTENSIONS = new Set([".gd"]);
 const MATERIAL_EXTENSIONS = new Set([".material", ".tres", ".res"]);
@@ -44,8 +45,12 @@ const WRITE_TOOLS = new Set([
   "godot_generate_texture",
   "godot_import_3d_model",
   "godot_generate_3d_model",
-  "godot_run_project"
+  "godot_run_project",
+  "godot_stop_project",
+  "godot_capture_screenshot",
+  "godot_capture_editor_viewport"
 ]);
+let runningGame = null;
 
 const tools = [
   tool("godot_help", "Discover available tool categories, workflows, safety modes, and usage templates.", {
@@ -54,6 +59,10 @@ const tools = [
     task: { type: "string", description: "Optional task description for a suggested tool chain." }
   }),
   tool("godot_bridge_status", "Check whether the optional Godot EditorPlugin bridge is listening on localhost.", {
+    timeout_ms: { type: "integer", minimum: 200, maximum: 5000, default: 1000 }
+  }),
+  tool("godot_editor_scene_snapshot", "Ask the Godot EditorPlugin bridge for the currently edited scene tree and selected nodes.", {
+    max_depth: { type: "integer", minimum: 1, maximum: 16, default: 8 },
     timeout_ms: { type: "integer", minimum: 200, maximum: 5000, default: 1000 }
   }),
   tool("godot_project_scan", "Scan the Godot project and return folders, tree, scenes, scripts, resources, textures, materials, and models.", {
@@ -134,10 +143,34 @@ const tools = [
     target_path: { type: "string" },
     name: { type: "string" }
   }, ["prompt"]),
-  tool("godot_run_project", "Run the current project with Godot CLI if available. Uses a strict Godot-only command whitelist.", {
+  tool("godot_run_project", "Run the current project with Godot CLI or ask the editor bridge to play it. Uses a strict Godot-only command whitelist.", {
     scene_path: { type: "string" },
+    mode: { type: "string", enum: ["cli", "editor"], default: "cli" },
     dry_run: { type: "boolean", default: true },
     wait_ms: { type: "integer", minimum: 0, maximum: 15000, default: 0 }
+  }),
+  tool("godot_runtime_status", "Report whether this MCP server has a tracked Godot game process and whether the editor bridge is playing a scene.", {
+    include_bridge: { type: "boolean", default: true },
+    timeout_ms: { type: "integer", minimum: 200, maximum: 5000, default: 1000 }
+  }),
+  tool("godot_stop_project", "Stop a Godot game launched by this MCP server or ask the editor bridge to stop the playing scene.", {
+    mode: { type: "string", enum: ["auto", "cli", "editor"], default: "auto" },
+    timeout_ms: { type: "integer", minimum: 200, maximum: 10000, default: 3000 }
+  }),
+  tool("godot_capture_screenshot", "Run the game for a few frames with Godot Movie Maker and save a PNG screenshot/sequence inside the project.", {
+    scene_path: { type: "string" },
+    output_path: { type: "string", description: "Project-local .png path. Defaults to docs/assets/screenshots/runtime/<timestamp>.png." },
+    frames: { type: "integer", minimum: 1, maximum: 120, default: 3 },
+    overwrite: { type: "boolean", default: false },
+    dry_run: { type: "boolean", default: false },
+    timeout_ms: { type: "integer", minimum: 1000, maximum: 120000, default: 30000 }
+  }),
+  tool("godot_capture_editor_viewport", "Ask the editor bridge to save the current 2D or 3D editor viewport as a PNG inside the project.", {
+    viewport: { type: "string", enum: ["2d", "3d"], default: "3d" },
+    viewport_index: { type: "integer", minimum: 0, maximum: 3, default: 0 },
+    output_path: { type: "string", description: "Project-local .png path. Defaults to docs/assets/screenshots/editor/<timestamp>.png." },
+    overwrite: { type: "boolean", default: false },
+    timeout_ms: { type: "integer", minimum: 200, maximum: 5000, default: 1000 }
   }),
   tool("godot_check_errors", "Run static checks and Godot headless check when Godot CLI is available.", {
     run_godot: { type: "boolean", default: true },
@@ -245,6 +278,7 @@ async function callTool(params) {
     const handlers = {
       godot_help: godotHelp,
       godot_bridge_status: godotBridgeStatus,
+      godot_editor_scene_snapshot: godotEditorSceneSnapshot,
       godot_project_scan: godotProjectScan,
       godot_list_scenes: godotListScenes,
       godot_read_scene: godotReadScene,
@@ -259,6 +293,10 @@ async function callTool(params) {
       godot_import_3d_model: godotImport3dModel,
       godot_generate_3d_model: godotGenerate3dModel,
       godot_run_project: godotRunProject,
+      godot_runtime_status: godotRuntimeStatus,
+      godot_stop_project: godotStopProject,
+      godot_capture_screenshot: godotCaptureScreenshot,
+      godot_capture_editor_viewport: godotCaptureEditorViewport,
       godot_check_errors: godotCheckErrors
     };
     return toolResult(await handlers[name](args));
@@ -313,6 +351,13 @@ async function godotHelp(args) {
 
 async function godotBridgeStatus(args) {
   return callEditorBridge({ command: "status" }, clampInteger(args.timeout_ms ?? 1000, 200, 5000));
+}
+
+async function godotEditorSceneSnapshot(args) {
+  return callEditorBridge({
+    command: "scene_snapshot",
+    max_depth: clampInteger(args.max_depth ?? 8, 1, 16)
+  }, clampInteger(args.timeout_ms ?? 1000, 200, 5000));
 }
 
 async function godotProjectScan(args) {
@@ -580,6 +625,16 @@ async function godotGenerate3dModel(args) {
 
 async function godotRunProject(args) {
   const scenePath = args.scene_path ? toProjectPath(await resolveProjectPath(args.scene_path, { mustExist: true })) : null;
+  const mode = args.mode ?? "cli";
+  if (mode === "editor") {
+    if (args.dry_run !== false) {
+      return { ok: true, dryRun: true, mode, bridge: { host: BRIDGE_HOST, port: BRIDGE_PORT }, command: "play_project", scenePath: scenePath ? toResPath(path.join(projectRoot, fromProjectSeparators(scenePath))) : "main" };
+    }
+    return callEditorBridge({
+      command: "play_project",
+      scene_path: scenePath ? toResPath(path.join(projectRoot, fromProjectSeparators(scenePath))) : "main"
+    }, 3000);
+  }
   const godot = await findGodotCommand();
   const runArgs = ["--path", projectRoot, ...(scenePath ? ["--scene", scenePath] : [])];
   if (!godot) {
@@ -591,7 +646,87 @@ async function godotRunProject(args) {
   if (args.dry_run !== false) {
     return { ok: true, dryRun: true, command: godot, args: runArgs };
   }
+  if (clampInteger(args.wait_ms ?? 0, 0, 15000) === 0) {
+    return launchTrackedGame(godot, runArgs, scenePath);
+  }
   return runCommand(godot, runArgs, clampInteger(args.wait_ms ?? 0, 0, 15000), { detachWhenNoWait: true });
+}
+
+async function godotRuntimeStatus(args) {
+  const includeBridge = args.include_bridge !== false;
+  return {
+    ok: true,
+    cli: trackedGameStatus(),
+    bridge: includeBridge ? await callEditorBridge({ command: "status" }, clampInteger(args.timeout_ms ?? 1000, 200, 5000)) : null
+  };
+}
+
+async function godotStopProject(args) {
+  const mode = args.mode ?? "auto";
+  const timeoutMs = clampInteger(args.timeout_ms ?? 3000, 200, 10000);
+  const result = { ok: true, mode, cli: null, bridge: null, stopped: false };
+
+  if (mode === "auto" || mode === "cli") {
+    result.cli = await stopTrackedGame(timeoutMs);
+    result.stopped ||= Boolean(result.cli.stopped);
+  }
+
+  if (mode === "auto" || mode === "editor") {
+    result.bridge = await callEditorBridge({ command: "stop_project" }, timeoutMs);
+    result.stopped ||= Boolean(result.bridge?.response?.stopped);
+  }
+
+  return result;
+}
+
+async function godotCaptureScreenshot(args) {
+  const frames = clampInteger(args.frames ?? 3, 1, 120);
+  const timeoutMs = clampInteger(args.timeout_ms ?? 30000, 1000, 120000);
+  const scenePath = args.scene_path ? toProjectPath(await resolveProjectPath(args.scene_path, { mustExist: true })) : null;
+  const outputPath = args.output_path ?? `docs/assets/screenshots/runtime/screenshot-${safeTimestamp()}.png`;
+  const outputAbs = await resolveProjectPath(outputPath, { forWrite: true });
+  assertScreenshotExtension(outputAbs, "output_path");
+  await assertCanWrite(outputAbs, Boolean(args.overwrite));
+
+  const godot = await findGodotCommand();
+  const runArgs = ["--path", projectRoot, ...(scenePath ? ["--scene", scenePath] : []), "--write-movie", outputAbs, "--quit-after", String(frames)];
+  if (!godot) {
+    return { ok: false, status: "not_found", command: "godot", args: runArgs };
+  }
+  if (!isAllowedGodotCli(godot, runArgs)) {
+    throw new Error("Godot CLI screenshot command was rejected by the whitelist.");
+  }
+  if (args.dry_run === true) {
+    return { ok: true, dryRun: true, command: godot, args: runArgs, expectedOutput: toResPath(outputAbs) };
+  }
+
+  await fs.mkdir(path.dirname(outputAbs), { recursive: true });
+  const before = await listPngNames(path.dirname(outputAbs));
+  const commandResult = await runCommand(godot, runArgs, timeoutMs);
+  const captures = await collectScreenshotOutputs(outputAbs, before);
+  const ok = commandResult.status === "completed" && commandResult.exitCode === 0 && captures.length > 0;
+  return {
+    ok,
+    command: commandResult,
+    requestedOutput: toResPath(outputAbs),
+    screenshots: captures.map((item) => toResPath(item)),
+    report: ok ? "Screenshot capture completed." : "Godot finished without a detected PNG screenshot. Check stdout/stderr for Movie Maker output."
+  };
+}
+
+async function godotCaptureEditorViewport(args) {
+  const outputPath = args.output_path ?? `docs/assets/screenshots/editor/editor-${safeTimestamp()}.png`;
+  const outputAbs = await resolveProjectPath(outputPath, { forWrite: true });
+  assertScreenshotExtension(outputAbs, "output_path");
+  await assertCanWrite(outputAbs, Boolean(args.overwrite));
+  await fs.mkdir(path.dirname(outputAbs), { recursive: true });
+
+  return callEditorBridge({
+    command: "capture_editor_viewport",
+    viewport: args.viewport ?? "3d",
+    viewport_index: clampInteger(args.viewport_index ?? 0, 0, 3),
+    output_path: toResPath(outputAbs)
+  }, clampInteger(args.timeout_ms ?? 1000, 200, 5000));
 }
 
 async function godotCheckErrors(args) {
@@ -651,10 +786,10 @@ function groupToolsByCategory() {
 function toolCategory(name) {
   if (name === "godot_help") return "discovery";
   if (name.includes("bridge")) return "bridge";
+  if (name.includes("runtime") || name.includes("run") || name.includes("stop") || name.includes("screenshot") || name.includes("viewport")) return "runtime";
   if (name.includes("scan") || name.includes("list") || name.includes("read") || name.includes("check")) return "inspect";
   if (name.includes("scene") || name.includes("node") || name.includes("script")) return "edit";
   if (name.includes("image") || name.includes("texture") || name.includes("model") || name.includes("sprite")) return "assets";
-  if (name.includes("run")) return "runtime";
   return "misc";
 }
 
@@ -664,16 +799,17 @@ function workflowHelp() {
     createSimpleScene: ["godot_create_script", "godot_create_scene", "godot_attach_script", "godot_add_node", "godot_read_scene", "godot_check_errors"],
     importSprite: ["godot_import_image", "godot_add_node", "godot_update_node", "godot_check_errors"],
     generationSafeMode: ["godot_generate_sprite/provider:none", "godot_generate_texture/provider:none", "godot_generate_3d_model/provider:none"],
-    editorBridgeLoop: ["enable addons/ai_mcp_bridge", "godot_bridge_status", "send editor bridge commands from a local client when richer Godot API access is needed"]
+    runtimeLoop: ["godot_run_project/dry_run:false", "godot_runtime_status", "godot_capture_screenshot", "godot_stop_project"],
+    editorBridgeLoop: ["enable addons/ai_mcp_bridge", "godot_bridge_status", "godot_editor_scene_snapshot", "godot_run_project/mode:editor", "godot_stop_project/mode:editor"]
   };
 }
 
 function coverageHelp() {
   return {
-    strong: ["project scan", "scene list/read for .tscn", "safe .tscn create/add/update", "GDScript creation", "project-local image/model import", "provider job queue", "static validation"],
-    partial: ["Godot CLI run/check, depends on Godot executable availability", "Editor bridge, depends on plugin enabled in the editor", "OpenAI/custom_http image generation, depends on .env credentials and network approval"],
+    strong: ["project scan", "scene list/read for .tscn", "safe .tscn create/add/update", "GDScript creation", "project-local image/model import", "provider job queue", "static validation", "tracked CLI run/stop", "PNG game screenshots through Godot Movie Maker"],
+    partial: ["Godot CLI run/check/screenshot, depends on Godot executable availability", "Editor bridge play/stop/snapshot, depends on plugin enabled in the editor", "OpenAI/custom_http image generation, depends on .env credentials and network approval"],
     intentionallyLimited: ["binary .scn editing", "arbitrary shell commands", "delete node/file operations", "full UndoRedo integration from MCP"],
-    futureCandidates: ["runtime autoload for screenshots/input/runtime tree", "LSP/DAP integration", "ClassDB introspection", "paged tool profiles for small-context clients"]
+    futureCandidates: ["runtime autoload for input simulation and live runtime tree inspection", "LSP/DAP integration", "ClassDB introspection", "paged tool profiles for small-context clients"]
   };
 }
 
@@ -703,7 +839,7 @@ function bridgeHelp() {
     port: BRIDGE_PORT,
     plugin: "Enable addons/ai_mcp_bridge in Godot Project Settings > Plugins.",
     why: "Use the bridge for live editor/API-backed operations where direct .tscn text editing is too limited.",
-    currentCommands: ["status", "create_script", "create_scene", "add_node", "update_node", "attach_script"]
+    currentCommands: ["status", "scene_snapshot", "play_project", "stop_project", "capture_editor_viewport", "create_script", "create_scene", "add_node", "update_node", "attach_script"]
   };
 }
 
@@ -722,7 +858,12 @@ function usageTemplate(name) {
     godot_generate_texture: { provider: "none", prompt: "tileable stone floor", seamless: true, target_path: "assets/generated/textures/stone.png" },
     godot_import_3d_model: { source_path: "assets/source/models/prop.glb", target_path: "assets/models/prop.glb" },
     godot_generate_3d_model: { provider: "none", prompt: "low poly treasure chest", target_path: "assets/generated/models/chest.glb" },
-    godot_run_project: { dry_run: true },
+    godot_run_project: { mode: "cli", dry_run: true },
+    godot_runtime_status: { include_bridge: true, timeout_ms: 1000 },
+    godot_stop_project: { mode: "auto", timeout_ms: 3000 },
+    godot_capture_screenshot: { scene_path: "scenes/example.tscn", output_path: "docs/assets/screenshots/runtime/example.png", frames: 3 },
+    godot_capture_editor_viewport: { viewport: "3d", viewport_index: 0, output_path: "docs/assets/screenshots/editor/current-3d.png" },
+    godot_editor_scene_snapshot: { max_depth: 8, timeout_ms: 1000 },
     godot_check_errors: { run_godot: true, timeout_ms: 20000 },
     godot_bridge_status: { timeout_ms: 1000 },
     godot_help: { category: "overview" }
@@ -741,8 +882,11 @@ function suggestToolChain(task) {
   if (text.includes("scene") || text.includes("node")) {
     return ["godot_project_scan", "godot_create_script", "godot_create_scene", "godot_add_node", "godot_read_scene", "godot_check_errors"];
   }
-  if (text.includes("debug") || text.includes("run")) {
-    return ["godot_check_errors", "godot_run_project/dry_run:true", "godot_bridge_status"];
+  if (text.includes("screenshot") || text.includes("capture")) {
+    return ["godot_check_errors", "godot_run_project/dry_run:true", "godot_capture_screenshot", "godot_runtime_status"];
+  }
+  if (text.includes("debug") || text.includes("run") || text.includes("play") || text.includes("stop")) {
+    return ["godot_check_errors", "godot_run_project/dry_run:true", "godot_runtime_status", "godot_stop_project"];
   }
   return ["godot_project_scan", "godot_help/category:workflows", "godot_check_errors"];
 }
@@ -1174,7 +1318,7 @@ async function runGodotCheck(timeoutMs) {
   if (!godot) {
     return { status: "not_found" };
   }
-  const args = ["--headless", "--path", projectRoot, "--quit"];
+  const args = ["--headless", "--editor", "--path", projectRoot, "--quit"];
   if (!isAllowedGodotCli(godot, args)) {
     return { status: "blocked_by_whitelist" };
   }
@@ -1250,6 +1394,127 @@ function runCommand(command, args, timeoutMs, options = {}) {
       }
     });
   });
+}
+
+function launchTrackedGame(command, args, scenePath) {
+  const current = trackedGameStatus();
+  if (current.status === "running") {
+    throw new Error(`A Godot game is already running with pid ${current.pid}. Stop it with godot_stop_project first.`);
+  }
+
+  const child = spawn(command, args, {
+    cwd: projectRoot,
+    windowsHide: true,
+    stdio: ["ignore", "pipe", "pipe"]
+  });
+  const state = {
+    child,
+    pid: child.pid,
+    command,
+    args,
+    scenePath,
+    status: "running",
+    startedAt: new Date().toISOString(),
+    finishedAt: null,
+    exitCode: null,
+    stdout: "",
+    stderr: ""
+  };
+  runningGame = state;
+
+  child.stdout.on("data", (chunk) => {
+    state.stdout = `${state.stdout}${chunk.toString("utf8")}`.slice(-8000);
+  });
+  child.stderr.on("data", (chunk) => {
+    state.stderr = `${state.stderr}${chunk.toString("utf8")}`.slice(-8000);
+  });
+  child.on("error", (error) => {
+    state.status = "error";
+    state.finishedAt = new Date().toISOString();
+    state.error = sanitizeForLog(error.message ?? error, env);
+  });
+  child.on("close", (exitCode) => {
+    state.status = "exited";
+    state.finishedAt = new Date().toISOString();
+    state.exitCode = exitCode;
+    state.stdout = sanitizeForLog(state.stdout, env);
+    state.stderr = sanitizeForLog(state.stderr, env);
+  });
+
+  return {
+    ok: true,
+    status: "launched",
+    mode: "cli",
+    pid: child.pid,
+    command,
+    args,
+    scene: scenePath ? `res://${scenePath}` : null
+  };
+}
+
+function trackedGameStatus() {
+  if (!runningGame) {
+    return { status: "not_running" };
+  }
+  return {
+    status: runningGame.status,
+    pid: runningGame.pid,
+    command: runningGame.command,
+    args: runningGame.args,
+    scene: runningGame.scenePath ? `res://${runningGame.scenePath}` : null,
+    startedAt: runningGame.startedAt,
+    finishedAt: runningGame.finishedAt,
+    exitCode: runningGame.exitCode,
+    stdoutTail: sanitizeForLog(runningGame.stdout ?? "", env),
+    stderrTail: sanitizeForLog(runningGame.stderr ?? "", env)
+  };
+}
+
+function stopTrackedGame(timeoutMs) {
+  if (!runningGame || runningGame.status !== "running") {
+    return Promise.resolve({ ok: true, status: "not_running", stopped: false });
+  }
+
+  const child = runningGame.child;
+  const pid = runningGame.pid;
+  const killed = child.kill();
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      resolve({ ok: false, status: "timeout", stopped: false, pid, killSignalSent: killed });
+    }, timeoutMs);
+    child.once("close", (exitCode) => {
+      clearTimeout(timer);
+      resolve({ ok: true, status: "stopped", stopped: true, pid, exitCode, killSignalSent: killed });
+    });
+  });
+}
+
+async function listPngNames(directory) {
+  try {
+    const entries = await fs.readdir(directory, { withFileTypes: true });
+    return new Set(entries.filter((entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".png")).map((entry) => entry.name));
+  } catch {
+    return new Set();
+  }
+}
+
+async function collectScreenshotOutputs(targetAbs, beforeNames) {
+  const directory = path.dirname(targetAbs);
+  const targetName = path.basename(targetAbs);
+  const targetStem = path.basename(targetAbs, path.extname(targetAbs));
+  const entries = await fs.readdir(directory, { withFileTypes: true });
+  const captures = [];
+  for (const entry of entries) {
+    if (!entry.isFile() || !entry.name.toLowerCase().endsWith(".png")) {
+      continue;
+    }
+    const isExpectedName = entry.name === targetName || entry.name.startsWith(targetStem);
+    if (isExpectedName && (!beforeNames.has(entry.name) || entry.name === targetName)) {
+      captures.push(path.join(directory, entry.name));
+    }
+  }
+  captures.sort();
+  return captures;
 }
 
 async function resolveProjectRoot() {
@@ -1480,6 +1745,12 @@ function assertImageExtension(abs, name) {
 function assertModelExtension(abs, name) {
   if (!MODEL_EXTENSIONS.has(path.extname(abs).toLowerCase())) {
     throw new Error(`${name} must use one of: ${[...MODEL_EXTENSIONS].join(", ")}.`);
+  }
+}
+
+function assertScreenshotExtension(abs, name) {
+  if (!SCREENSHOT_EXTENSIONS.has(path.extname(abs).toLowerCase())) {
+    throw new Error(`${name} must use one of: ${[...SCREENSHOT_EXTENSIONS].join(", ")}.`);
   }
 }
 

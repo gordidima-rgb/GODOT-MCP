@@ -64,6 +64,7 @@ try {
   for (const name of [
     "godot_help",
     "godot_bridge_status",
+    "godot_editor_scene_snapshot",
     "godot_project_scan",
     "godot_list_scenes",
     "godot_read_scene",
@@ -78,6 +79,10 @@ try {
     "godot_import_3d_model",
     "godot_generate_3d_model",
     "godot_run_project",
+    "godot_runtime_status",
+    "godot_stop_project",
+    "godot_capture_screenshot",
+    "godot_capture_editor_viewport",
     "godot_check_errors"
   ]) {
     assert(names.includes(name), `missing tool: ${name}`);
@@ -88,6 +93,9 @@ try {
 
   const bridge = await call("godot_bridge_status", { timeout_ms: 250 });
   assert(bridge.ok === false || bridge.connected === true, "godot_bridge_status must return a structured status");
+
+  const editorSnapshot = await call("godot_editor_scene_snapshot", { timeout_ms: 250 });
+  assert(editorSnapshot.ok === false || editorSnapshot.connected === true, "godot_editor_scene_snapshot must return bridge connection status");
 
   await call("godot_create_script", {
     path: "scripts/smoke.gd",
@@ -175,6 +183,25 @@ try {
 
   const runDry = await call("godot_run_project", { dry_run: true });
   assert(runDry.dryRun === true || runDry.status === "not_found", "godot_run_project dry run must not launch Godot");
+
+  const status = await call("godot_runtime_status", { include_bridge: false });
+  assert(status.cli.status === "not_running", "runtime_status must report no tracked game before launch");
+
+  const stop = await call("godot_stop_project", { mode: "cli" });
+  assert(stop.cli.status === "not_running", "stop_project cli mode must be safe when no game is running");
+
+  const screenshotDry = await call("godot_capture_screenshot", {
+    scene_path: "scenes/smoke.tscn",
+    output_path: "docs/assets/screenshots/runtime/smoke.png",
+    dry_run: true
+  });
+  assert(screenshotDry.dryRun === true || screenshotDry.status === "not_found", "capture_screenshot dry run must not launch Godot");
+
+  const editorViewport = await call("godot_capture_editor_viewport", {
+    output_path: "docs/assets/screenshots/editor/smoke.png",
+    timeout_ms: 250
+  });
+  assert(editorViewport.ok === false || editorViewport.connected === true, "capture_editor_viewport must return bridge connection status");
 
   const checked = await call("godot_check_errors", { run_godot: false });
   assert(checked.ok === true, "static check_errors must pass for fixture");

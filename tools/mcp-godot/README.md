@@ -12,12 +12,15 @@ This is a local stdio MCP server for the current Godot 4 project. It works witho
 - Create and attach GDScript files.
 - Import project-local images and 3D models.
 - Generate or queue sprite/texture/model jobs through provider interfaces.
-- Run dry-run project launch commands and check errors with Godot CLI when available.
+- Run, stop, and check the project with Godot CLI when available.
+- Capture PNG game screenshots through Godot Movie Maker.
+- Ask the editor bridge what is open in the current scene.
 
 ## Tool Names
 
 - `godot_help`
 - `godot_bridge_status`
+- `godot_editor_scene_snapshot`
 - `godot_project_scan`
 - `godot_list_scenes`
 - `godot_read_scene`
@@ -32,6 +35,10 @@ This is a local stdio MCP server for the current Godot 4 project. It works witho
 - `godot_import_3d_model`
 - `godot_generate_3d_model`
 - `godot_run_project`
+- `godot_runtime_status`
+- `godot_stop_project`
+- `godot_capture_screenshot`
+- `godot_capture_editor_viewport`
 - `godot_check_errors`
 
 Start with:
@@ -70,9 +77,12 @@ The server does not expose arbitrary shell commands. External execution is limit
 
 ```text
 godot --headless --path <project-root> --quit
+godot --headless --editor --path <project-root> --quit
 godot --headless --path <project-root> --import
 godot --path <project-root>
 godot --path <project-root> --scene <project-scene-path>
+godot --path <project-root> --write-movie <project-png-path> --quit-after <frames>
+godot --path <project-root> --scene <project-scene-path> --write-movie <project-png-path> --quit-after <frames>
 ```
 
 Direct file editing supports text `.tscn` scenes only. Binary `.scn` scenes should be managed through the Godot editor bridge.
@@ -80,5 +90,7 @@ Direct file editing supports text `.tscn` scenes only. Binary `.scn` scenes shou
 ## Editor Bridge
 
 Enable `addons/ai_mcp_bridge/` in Godot and press Start in the dock. Then `godot_bridge_status` checks the localhost bridge at `127.0.0.1:8765` by default.
+
+Bridge-backed tools include editor scene snapshots, editor play/stop, and editor viewport screenshots. CLI-backed runtime tools include tracked run/stop and Movie Maker screenshots.
 
 This follows the same broad pattern used by mature Godot MCP projects: MCP stdio for the AI client, and a local editor-side bridge for operations that are safer through Godot's own API.

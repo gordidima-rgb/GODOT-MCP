@@ -1,11 +1,11 @@
 import path from "node:path";
 
-const ALLOWED_GODOT_COMMANDS = new Set(["godot", "godot4"]);
+const ALLOWED_GODOT_COMMANDS = new Set(["godot", "godot4", "godot.exe", "godot4.exe"]);
 const SECRET_NAME_PATTERN = /(KEY|TOKEN|SECRET|PASSWORD|COOKIE|CREDENTIAL)/i;
 
 export function isAllowedGodotCli(command, args) {
   const commandName = path.basename(command).toLowerCase();
-  if (!ALLOWED_GODOT_COMMANDS.has(commandName)) {
+  if (!ALLOWED_GODOT_COMMANDS.has(commandName) && !/^godot[_-]?v?\d/i.test(commandName)) {
     return false;
   }
 
@@ -15,12 +15,23 @@ export function isAllowedGodotCli(command, args) {
 
   // Fixed project check:
   // godot --headless --path <projectRoot> --quit
+  // godot --headless --editor --path <projectRoot> --quit
   if (
     args.length === 4 &&
     args[0] === "--headless" &&
     args[1] === "--path" &&
     isNonEmptyString(args[2]) &&
     args[3] === "--quit"
+  ) {
+    return true;
+  }
+  if (
+    args.length === 5 &&
+    args[0] === "--headless" &&
+    args[1] === "--editor" &&
+    args[2] === "--path" &&
+    isNonEmptyString(args[3]) &&
+    args[4] === "--quit"
   ) {
     return true;
   }
@@ -47,6 +58,33 @@ export function isAllowedGodotCli(command, args) {
     isNonEmptyString(args[1]) &&
     args[2] === "--scene" &&
     isNonEmptyString(args[3])
+  ) {
+    return true;
+  }
+
+  // Capture a short PNG movie sequence inside the project.
+  // godot --path <projectRoot> --write-movie <png> --quit-after <frames>
+  if (
+    args.length === 6 &&
+    args[0] === "--path" &&
+    isNonEmptyString(args[1]) &&
+    args[2] === "--write-movie" &&
+    isPngPath(args[3]) &&
+    args[4] === "--quit-after" &&
+    isPositiveIntegerString(args[5])
+  ) {
+    return true;
+  }
+  if (
+    args.length === 8 &&
+    args[0] === "--path" &&
+    isNonEmptyString(args[1]) &&
+    args[2] === "--scene" &&
+    isNonEmptyString(args[3]) &&
+    args[4] === "--write-movie" &&
+    isPngPath(args[5]) &&
+    args[6] === "--quit-after" &&
+    isPositiveIntegerString(args[7])
   ) {
     return true;
   }
@@ -83,4 +121,12 @@ export function safeFilenamePart(value) {
 
 function isNonEmptyString(value) {
   return typeof value === "string" && value.trim() !== "";
+}
+
+function isPngPath(value) {
+  return isNonEmptyString(value) && path.extname(value).toLowerCase() === ".png";
+}
+
+function isPositiveIntegerString(value) {
+  return /^\d+$/.test(String(value)) && Number(value) > 0;
 }

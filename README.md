@@ -6,7 +6,7 @@
 
 Godot MCP AI Bridge for safe AI-assisted Godot 4.x development.
 
-Current version: `0.3.0`
+Current version: `0.3.1`
 
 Safe local MCP tooling for Godot 4.x projects, designed so Codex or another AI agent can inspect and automate a Godot project without getting direct access to arbitrary shell commands or files outside the project.
 
@@ -40,6 +40,7 @@ The local MCP server lives in `tools/mcp-godot/` and exposes these tools:
 
 - `godot_help`
 - `godot_bridge_status`
+- `godot_editor_scene_snapshot`
 - `godot_project_scan`
 - `godot_list_scenes`
 - `godot_read_scene`
@@ -54,6 +55,10 @@ The local MCP server lives in `tools/mcp-godot/` and exposes these tools:
 - `godot_import_3d_model`
 - `godot_generate_3d_model`
 - `godot_run_project`
+- `godot_runtime_status`
+- `godot_stop_project`
+- `godot_capture_screenshot`
+- `godot_capture_editor_viewport`
 - `godot_check_errors`
 
 Text `.tscn` scenes are supported for simple file-based edits. Binary `.scn` scenes are intentionally not edited as text; use the editor bridge for those workflows.
@@ -167,6 +172,15 @@ The dock can start a localhost TCP bridge at:
 ```
 
 The MCP tool `godot_bridge_status` checks whether the bridge is reachable.
+The bridge can also return a snapshot of the open editor scene, play/stop the project from the editor, and save a 2D/3D editor viewport screenshot.
+
+For game screenshots, use the MCP tool `godot_capture_screenshot`. It runs the project for a few frames through Godot Movie Maker and writes PNG output under `docs/assets/screenshots/runtime/` by default.
+
+Example game screenshot captured by MCP in `0.3.1`:
+
+<p align="center">
+  <img src="docs/assets/screenshots/runtime/third-person-capsule-0.3.1.png" alt="Runtime screenshot captured through MCP" width="720">
+</p>
 
 If the dock does not appear after enabling the plugin, disable and enable `AI MCP Bridge` again. The plugin also adds a menu item:
 
@@ -260,7 +274,7 @@ If Godot CLI is not available, `godot_check_errors` still runs static validation
 
 - WebSocket bridge with heartbeat/reconnect.
 - UndoRedo-backed editor mutations.
-- Runtime autoload bridge for screenshots, input simulation, and runtime tree inspection.
+- Runtime autoload bridge for input simulation and live runtime tree inspection.
 - Optional LSP/DAP/ClassDB integrations.
 - More provider adapters behind the existing safe interface.
 - Tool profiles for compact/full client modes if the tool surface grows.

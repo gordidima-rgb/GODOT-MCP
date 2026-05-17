@@ -57,6 +57,7 @@ After this, `godot_check_errors` can run a real headless editor check and `godot
 
 - `godot_help`
 - `godot_bridge_status`
+- `godot_editor_scene_snapshot`
 - `godot_project_scan`
 - `godot_list_scenes`
 - `godot_read_scene`
@@ -71,7 +72,20 @@ After this, `godot_check_errors` can run a real headless editor check and `godot
 - `godot_import_3d_model`
 - `godot_generate_3d_model`
 - `godot_run_project`
+- `godot_runtime_status`
+- `godot_stop_project`
+- `godot_capture_screenshot`
+- `godot_capture_editor_viewport`
 - `godot_check_errors`
+
+Runtime tools:
+
+- `godot_run_project` starts the game through Godot CLI, or through the editor bridge with `mode: "editor"`.
+- `godot_runtime_status` reports the tracked CLI game process and, when the dock bridge is running, whether the editor is playing a scene.
+- `godot_stop_project` stops a tracked CLI launch or asks the editor bridge to stop the current play session.
+- `godot_capture_screenshot` uses Godot Movie Maker with `--write-movie` and `--quit-after` to save a PNG screenshot/sequence inside `docs/assets/screenshots/runtime/`.
+- `godot_editor_scene_snapshot` asks the Godot dock bridge what scene is currently open and returns the node tree.
+- `godot_capture_editor_viewport` saves the current 2D or 3D editor viewport to `docs/assets/screenshots/editor/`.
 
 ## Provider Defaults
 
@@ -156,6 +170,19 @@ The dock can start a localhost TCP bridge on `127.0.0.1:8765`. It accepts small 
 ```
 
 The bridge uses Godot API inside the editor for safe scene/script/node operations. It is intentionally local-only and does not expose arbitrary shell commands.
+
+Useful bridge commands exposed through MCP:
+
+- `status`
+- `scene_snapshot`
+- `play_project`
+- `stop_project`
+- `capture_editor_viewport`
+- `create_script`
+- `create_scene`
+- `add_node`
+- `update_node`
+- `attach_script`
 
 If the dock does not appear:
 

@@ -3,6 +3,7 @@ extends VBoxContainer
 
 const DEFAULT_PORT := 8765
 const MAX_HISTORY := 8
+const MAX_SNAPSHOT_DEPTH := 16
 const INSTRUCTIONS_PATH := "res://docs/AI_AGENT_INSTRUCTIONS.md"
 const CLIENT_SETUP_PATH := "res://docs/AI_CLIENT_SETUP.md"
 const ALLOWED_ROOT_TYPES := ["Node2D", "Node3D", "Control", "CharacterBody2D", "CharacterBody3D"]
@@ -349,7 +350,15 @@ func _handle_bridge_command(request: Variant) -> Dictionary:
     record_command(command)
     match command:
         "status":
-            return {"ok": true, "running": _running, "port": DEFAULT_PORT}
+            return _bridge_status()
+        "scene_snapshot":
+            return _bridge_scene_snapshot(request)
+        "play_project":
+            return _bridge_play_project(request)
+        "stop_project":
+            return _bridge_stop_project()
+        "capture_editor_viewport":
+            return _bridge_capture_editor_viewport(request)
         "create_script":
             return _bridge_create_script(request)
         "create_scene":
@@ -362,6 +371,94 @@ func _handle_bridge_command(request: Variant) -> Dictionary:
             return _bridge_attach_script(request)
         _:
             return _error_response("Unsupported bridge command: %s" % command)
+
+func _bridge_status() -> Dictionary:
+    var edited_root: Node = EditorInterface.get_edited_scene_root()
+    return {
+        "ok": true,
+        "running": _running,
+        "port": DEFAULT_PORT,
+        "is_playing_scene": EditorInterface.is_playing_scene(),
+        "playing_scene": EditorInterface.get_playing_scene(),
+        "edited_scene": _node_scene_path(edited_root),
+        "edited_root": _node_brief(edited_root) if edited_root != null else {}
+    }
+
+func _bridge_scene_snapshot(request: Dictionary) -> Dictionary:
+    var max_depth := clampi(int(request.get("max_depth", 8)), 1, MAX_SNAPSHOT_DEPTH)
+    var root: Node = EditorInterface.get_edited_scene_root()
+    var open_scenes: Array[String] = []
+    for scene_path in EditorInterface.get_open_scenes():
+        open_scenes.append(String(scene_path))
+
+    var selected_nodes: Array[String] = []
+    for node in EditorInterface.get_selection().get_selected_nodes():
+        if node is Node:
+            selected_nodes.append(String((node as Node).get_path()))
+
+    return {
+        "ok": true,
+        "open_scenes": open_scenes,
+        "edited_scene": _node_scene_path(root),
+        "root": _node_tree(root, max_depth, 0) if root != null else {},
+        "selected_nodes": selected_nodes
+    }
+
+func _bridge_play_project(request: Dictionary) -> Dictionary:
+    var scene_path := String(request.get("scene_path", "main"))
+    if scene_path.is_empty() or scene_path == "main":
+        EditorInterface.play_main_scene()
+    elif scene_path == "current":
+        EditorInterface.play_current_scene()
+    else:
+        if not _is_safe_res_path(scene_path, ".tscn"):
+            return _error_response("Unsafe or invalid scene path.")
+        EditorInterface.play_custom_scene(scene_path)
+    return {
+        "ok": true,
+        "requested_scene": scene_path,
+        "is_playing_scene": EditorInterface.is_playing_scene(),
+        "playing_scene": EditorInterface.get_playing_scene()
+    }
+
+func _bridge_stop_project() -> Dictionary:
+    var was_playing := EditorInterface.is_playing_scene()
+    if was_playing:
+        EditorInterface.stop_playing_scene()
+    return {
+        "ok": true,
+        "stopped": was_playing,
+        "is_playing_scene": EditorInterface.is_playing_scene(),
+        "playing_scene": EditorInterface.get_playing_scene()
+    }
+
+func _bridge_capture_editor_viewport(request: Dictionary) -> Dictionary:
+    var output_path := String(request.get("output_path", ""))
+    if not _is_safe_res_path(output_path, ".png"):
+        return _error_response("Unsafe or invalid screenshot path.")
+
+    var viewport_name := String(request.get("viewport", "3d"))
+    var viewport: Viewport = null
+    if viewport_name == "2d":
+        viewport = EditorInterface.get_editor_viewport_2d()
+    else:
+        var viewport_index := clampi(int(request.get("viewport_index", 0)), 0, 3)
+        viewport = EditorInterface.get_editor_viewport_3d(viewport_index)
+    if viewport == null:
+        return _error_response("Editor viewport is not available.")
+
+    var absolute_dir := ProjectSettings.globalize_path(output_path.get_base_dir())
+    var dir_error := DirAccess.make_dir_recursive_absolute(absolute_dir)
+    if dir_error != OK:
+        return _error_response("Could not create screenshot folder: %s" % error_string(dir_error))
+
+    var image := viewport.get_texture().get_image()
+    if image == null or image.is_empty():
+        return _error_response("Viewport image is empty. Switch to the 2D/3D view and try again.")
+    var save_error := image.save_png(output_path)
+    if save_error != OK:
+        return _error_response("Could not save screenshot: %s" % error_string(save_error))
+    return {"ok": true, "path": output_path, "viewport": viewport_name}
 
 func _bridge_create_script(request: Dictionary) -> Dictionary:
     var script_path := String(request.get("path", ""))
@@ -537,6 +634,57 @@ func _apply_basic_properties(node: Node, properties: Variant) -> void:
             "text":
                 if node is Label or node is Button:
                     node.text = String(value)
+
+func _node_scene_path(node: Node) -> String:
+    if node == null:
+        return ""
+    if not node.scene_file_path.is_empty():
+        return node.scene_file_path
+    return String(node.get_meta("res_path", ""))
+
+func _node_brief(node: Node) -> Dictionary:
+    if node == null:
+        return {}
+    var data: Dictionary = {
+        "name": node.name,
+        "type": node.get_class(),
+        "path": String(node.get_path()),
+        "child_count": node.get_child_count(),
+        "scene_file_path": node.scene_file_path
+    }
+    var script: Variant = node.get_script()
+    if script is Resource:
+        data["script"] = (script as Resource).resource_path
+    if node is Node2D:
+        var node_2d := node as Node2D
+        data["position"] = [node_2d.position.x, node_2d.position.y]
+        data["rotation"] = node_2d.rotation
+        data["scale"] = [node_2d.scale.x, node_2d.scale.y]
+    elif node is Node3D:
+        var node_3d := node as Node3D
+        data["position"] = [node_3d.position.x, node_3d.position.y, node_3d.position.z]
+        data["rotation"] = [node_3d.rotation.x, node_3d.rotation.y, node_3d.rotation.z]
+        data["scale"] = [node_3d.scale.x, node_3d.scale.y, node_3d.scale.z]
+    elif node is Control:
+        var control := node as Control
+        data["position"] = [control.position.x, control.position.y]
+        data["size"] = [control.size.x, control.size.y]
+    return data
+
+func _node_tree(node: Node, max_depth: int, depth: int) -> Dictionary:
+    var data := _node_brief(node)
+    var edited_root: Node = EditorInterface.get_edited_scene_root()
+    if edited_root != null:
+        data["scene_path"] = "." if node == edited_root else String(edited_root.get_path_to(node))
+    if depth >= max_depth:
+        data["children_truncated"] = node.get_child_count()
+        return data
+    var children: Array[Dictionary] = []
+    for child in node.get_children():
+        if child is Node:
+            children.append(_node_tree(child as Node, max_depth, depth + 1))
+    data["children"] = children
+    return data
 
 func _is_safe_res_path(res_path: String, extension: String) -> bool:
     if not res_path.begins_with("res://"):
