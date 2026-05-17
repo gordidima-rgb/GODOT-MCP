@@ -131,7 +131,7 @@ func _build_chat_ui() -> void:
     var separator := HSeparator.new()
     add_child(separator)
 
-    var chat_script := load("res://addons/ai_mcp_bridge/chat_panel.gd") as GDScript
+    var chat_script = load("res://addons/ai_mcp_bridge/chat_panel.gd")
     if chat_script == null:
         var error_label := Label.new()
         error_label.text = "Editor chat could not load. Check the Output panel."
@@ -298,7 +298,7 @@ func _project_root_for_docs() -> String:
 
 func _accept_new_clients() -> void:
     while _server.is_connection_available():
-        var client := _server.take_connection()
+        var client: StreamPeerTCP = _server.take_connection()
         if client != null:
             _clients.append(client)
             record_command("Client connected")
@@ -308,14 +308,14 @@ func _read_client_commands() -> void:
         if client.get_status() != StreamPeerTCP.STATUS_CONNECTED:
             _clients.erase(client)
             continue
-        var available := client.get_available_bytes()
+        var available: int = client.get_available_bytes()
         if available <= 0:
             continue
-        var text := client.get_utf8_string(available).strip_edges()
+        var text: String = client.get_utf8_string(available).strip_edges()
         if text.is_empty():
             continue
         var parsed: Variant = JSON.parse_string(text)
-        var response := _handle_bridge_command(parsed)
+        var response: Dictionary = _handle_bridge_command(parsed)
         client.put_data((JSON.stringify(response) + "\n").to_utf8_buffer())
 
 func _handle_bridge_command(request: Variant) -> Dictionary:

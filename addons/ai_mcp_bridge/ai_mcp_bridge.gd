@@ -43,7 +43,7 @@ func _build_dock_contents() -> void:
         child.queue_free()
     _loading_label = null
 
-    var panel_script := load("res://addons/ai_mcp_bridge/bridge_panel.gd") as GDScript
+    var panel_script = load("res://addons/ai_mcp_bridge/bridge_panel.gd")
     if panel_script == null:
         _show_dock_error("Could not load bridge_panel.gd.")
         return
