@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" role="img" aria-labelledby="title desc">
   <title id="title">GODOT-MCP architecture diagram</title>
-  <desc id="desc">Architecture flow showing AI clients connecting to a local MCP server, security layer, Godot project files, editor bridge, and asset providers.</desc>
+  <desc id="desc">Architecture flow showing AI clients connecting to a local MCP server, security layer, Godot project files, editor bridge, and asset providers with a Godot-inspired project mark.</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#f8fbff"/>
@@ -13,6 +13,11 @@
     <filter id="shadow" x="-12%" y="-18%" width="124%" height="140%">
       <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#17324d" flood-opacity="0.12"/>
     </filter>
+    <linearGradient id="godotBlue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#67a9dc"/>
+      <stop offset="0.55" stop-color="#478cbf"/>
+      <stop offset="1" stop-color="#2f6f9f"/>
+    </linearGradient>
     <style>
       .title { font: 800 34px "Segoe UI", Inter, Arial, sans-serif; fill: #17253a; }
       .subtitle { font: 600 18px "Segoe UI", Inter, Arial, sans-serif; fill: #567085; }
@@ -61,12 +66,19 @@
 
   <g transform="translate(770 420)">
     <rect class="card" width="292" height="190" rx="20"/>
-    <rect x="28" y="32" width="72" height="54" rx="10" fill="#eaf3ff" stroke="#b8d8ff"/>
-    <rect x="110" y="32" width="72" height="54" rx="10" fill="#eefaf3" stroke="#b7e6cf"/>
-    <rect x="192" y="32" width="72" height="54" rx="10" fill="#fff8df" stroke="#f0d57a"/>
-    <text x="42" y="64" class="tiny">tscn</text>
-    <text x="127" y="64" class="tiny">gd</text>
-    <text x="205" y="64" class="tiny">assets</text>
+    <g transform="translate(30 20) scale(0.55)">
+      <path d="M30 112 C26 78 40 52 64 36 L64 13 L79 25 L90 4 L103 25 L118 4 L129 26 L148 14 L144 38 C166 56 176 82 171 112 C164 147 136 169 101 169 C66 169 37 147 30 112 Z" fill="url(#godotBlue)" stroke="#1d5c86" stroke-width="7" stroke-linejoin="round"/>
+      <path d="M48 101 C54 70 73 54 101 54 C129 54 148 70 154 101 C148 128 128 146 101 146 C74 146 54 128 48 101 Z" fill="#ffffff" stroke="#1d5c86" stroke-width="6"/>
+      <circle cx="78" cy="93" r="8" fill="#17253a"/>
+      <circle cx="124" cy="93" r="8" fill="#17253a"/>
+      <path d="M80 120 C91 130 111 130 122 120" fill="none" stroke="#17253a" stroke-width="6" stroke-linecap="round"/>
+    </g>
+    <rect x="142" y="32" width="52" height="38" rx="10" fill="#eaf3ff" stroke="#b8d8ff"/>
+    <rect x="204" y="32" width="52" height="38" rx="10" fill="#eefaf3" stroke="#b7e6cf"/>
+    <rect x="142" y="80" width="114" height="38" rx="10" fill="#fff8df" stroke="#f0d57a"/>
+    <text x="153" y="57" class="tiny">tscn</text>
+    <text x="221" y="57" class="tiny">gd</text>
+    <text x="172" y="105" class="tiny">assets</text>
     <text x="26" y="122" class="box-title">Godot Project</text>
     <text x="26" y="151" class="box-text">scenes, scripts, textures</text>
     <text x="26" y="176" class="box-text">generation_jobs when providers are none</text>

@@ -245,3 +245,7 @@ If Godot CLI is not available, `godot_check_errors` still runs static validation
 ## License
 
 MIT. Use it freely, including in personal, educational, and commercial projects.
+
+## Logo Note
+
+This is an unofficial Godot MCP integration project and is not endorsed by the Godot Foundation. The README artwork uses a custom Godot-inspired mark to show compatibility with Godot Engine. The original [Godot logo/icon](https://github.com/godotengine/godot/blob/master/icon.svg) is credited to Andrea Calabro and Godot Engine contributors; public logo metadata lists CC BY 4.0 / MIT-style terms for reuse.
