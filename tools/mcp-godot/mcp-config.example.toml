@@ -1,13 +1,14 @@
-# Add these entries to C:\Users\gdima\.codex\config.toml after review.
-# Context7 uses the current official npm package name from Context7 docs.
+# Add these entries to your Codex config after review.
+# On Windows, that file is usually %USERPROFILE%\.codex\config.toml.
+# Replace <PROJECT_ROOT> with the folder that contains project.godot.
 
 [mcp_servers.context7]
-command = "C:\\Program Files\\nodejs\\npx.cmd"
+command = "npx"
 args = [ "-y", "@upstash/context7-mcp@latest" ]
 startup_timeout_sec = 60
 
 [mcp_servers.godotMCP]
-command = "C:\\Users\\gdima\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.exe"
-args = [ "C:\\Users\\gdima\\Documents\\learn-personal\\tools\\mcp-godot\\src\\server.mjs", "--project-root", "C:\\Users\\gdima\\Documents\\learn-personal" ]
+command = "node"
+args = [ "<PROJECT_ROOT>/tools/mcp-godot/src/server.mjs", "--project-root", "<PROJECT_ROOT>" ]
 startup_timeout_sec = 20
-env = { GODOT_PROJECT_ROOT = "C:\\Users\\gdima\\Documents\\learn-personal" }
+env = { GODOT_PROJECT_ROOT = "<PROJECT_ROOT>", GODOT_MCP_PORT = "8765" }

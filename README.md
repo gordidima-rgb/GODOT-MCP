@@ -8,60 +8,92 @@ Godot MCP AI Bridge for safe AI-assisted Godot 4.x development.
 
 Current version: `0.3.1`
 
-Safe local MCP tooling for Godot 4.x projects, designed so Codex or another AI agent can inspect and automate a Godot project without getting direct access to arbitrary shell commands or files outside the project.
+This repository gives Codex or another MCP-capable AI client a small, safe API for working inside a Godot 4.x project. The MCP server can inspect files, create small Godot resources, queue generation jobs, and call a local Godot EditorPlugin bridge when richer editor context is needed.
 
-This repository contains:
-
-- A dependency-light MCP stdio server for Godot project automation.
-- A Godot EditorPlugin bridge for editor-side operations and AI instructions.
-- Project-specific agent skills and beginner-oriented docs.
-- Safe provider interfaces for image/sprite/texture and 3D model generation.
-- A conservative security layer for paths, secrets, and command execution.
-
-## Why This Exists
-
-AI agents are useful in Godot only when they can see the project, understand scenes and scripts, run checks, and make small safe changes. This project gives the agent a structured API instead of asking it to guess Godot file formats or run risky commands.
-
-The goal is not to expose every Godot feature at once. The goal is a stable base:
+The goal is conservative automation:
 
 1. Inspect first.
-2. Edit only inside the project.
-3. Keep destructive actions out.
-4. Queue generation jobs when no real provider is configured.
-5. Use Godot's own editor bridge for richer scene operations.
+2. Keep all file changes inside the project.
+3. Avoid destructive operations.
+4. Use provider `none` by default so generation requests become reviewable JSON jobs.
+5. Use the optional editor bridge only for local Godot editor workflows.
 
 <p align="center">
   <img src="docs/assets/architecture.svg" alt="GODOT-MCP architecture diagram" width="900">
 </p>
 
-## Current Capabilities
+## Quick Start For Windows
 
-The local MCP server lives in `tools/mcp-godot/` and exposes these tools:
+You need:
 
-- `godot_help`
-- `godot_bridge_status`
-- `godot_editor_scene_snapshot`
-- `godot_project_scan`
-- `godot_list_scenes`
-- `godot_read_scene`
-- `godot_create_scene`
-- `godot_add_node`
-- `godot_update_node`
-- `godot_attach_script`
-- `godot_create_script`
-- `godot_import_image`
-- `godot_generate_sprite`
-- `godot_generate_texture`
-- `godot_import_3d_model`
-- `godot_generate_3d_model`
-- `godot_run_project`
-- `godot_runtime_status`
-- `godot_stop_project`
-- `godot_capture_screenshot`
-- `godot_capture_editor_viewport`
-- `godot_check_errors`
+- Godot 4.x
+- Node.js 18 or newer
+- a Godot project folder that contains `project.godot`
 
-Text `.tscn` scenes are supported for simple file-based edits. Binary `.scn` scenes are intentionally not edited as text; use the editor bridge for those workflows.
+1. Open PowerShell in your Godot project folder.
+2. Run this one command:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$s=Join-Path $env:TEMP 'install-godot-mcp.ps1'; Invoke-WebRequest 'https://raw.githubusercontent.com/gordidima-rgb/GODOT-MCP/main/tools/install-godot-mcp.ps1' -OutFile $s; & $s -ProjectPath (Get-Location)"
+```
+
+The installer copies the Godot editor plugin and the local MCP server into your project. It also enables the plugin in `project.godot`, saves a backup of `project.godot`, and writes a ready Codex config file named `godot-mcp.codex.toml`.
+
+3. Open or restart Godot 4.x.
+4. Find the `AI MCP Bridge` dock and press `Start`. Leave the port as `8765` unless it is already busy.
+5. Open `godot-mcp.codex.toml`, copy the `[mcp_servers.godotMCP]` block into your Codex config, then restart Codex.
+6. Ask Codex:
+
+```text
+Run godot_doctor, then godot_project_scan.
+```
+
+If you already cloned this repository, you can run the installer locally from the project root:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\install-godot-mcp.ps1
+```
+
+## Codex Setup
+
+The installer creates `godot-mcp.codex.toml` with the correct paths for your computer. If you need to write the config by hand, use this shape and replace `<PROJECT_ROOT>` with the folder that contains `project.godot`:
+
+```toml
+[mcp_servers.godotMCP]
+command = "node"
+args = [ "<PROJECT_ROOT>/tools/mcp-godot/src/server.mjs", "--project-root", "<PROJECT_ROOT>" ]
+startup_timeout_sec = 20
+env = { GODOT_PROJECT_ROOT = "<PROJECT_ROOT>", GODOT_MCP_PORT = "8765" }
+```
+
+On Windows, the Codex config file is usually here:
+
+```powershell
+$env:USERPROFILE\.codex\config.toml
+```
+
+Restart Codex after changing MCP config. You can also use the Godot dock button `Copy Codex config`, or ask the MCP server for a ready TOML block after it is connected:
+
+```text
+Call godot_codex_config.
+```
+
+## Run Doctor
+
+`godot_doctor` checks the setup in one place:
+
+- `projectRoot`
+- MCP `serverVersion`
+- Node.js version
+- whether `project.godot` exists
+- whether Godot CLI is found
+- whether the bridge is reachable
+- whether `.env` exists
+- provider status
+- expected folders: `scenes`, `scripts`, `Assets`, `assets`, `generation_jobs`
+- beginner-friendly recommendations
+
+The bridge dock also has a `Run Doctor` button for local editor-side checks.
 
 ## Project Layout
 
@@ -73,137 +105,91 @@ addons/
   generated_assets_browser/
   scene_builder_tools/
 Assets/
-  generated/
-    sprites/
-    textures/
-    models/
-  models/
-  materials/
-  textures/
-  source/prompts/
-docs/
+assets/
 generation_jobs/
 scenes/
 scripts/
 tools/mcp-godot/
+docs/
 ```
 
-The original project currently uses `Assets/` with an uppercase `A`. On Windows this works with `assets/...` paths because the filesystem is case-insensitive. The tools do not rename folders automatically.
+This project currently contains both `Assets/` and `assets/`. The doctor reports both because older Godot/editor workflows may use either casing. Use `assets/...` for new generated assets unless a specific existing asset path uses `Assets/...`.
 
-## Requirements
+## What AI Can Safely Do
 
-- Godot 4.x.
-- Node.js 18+.
-- Optional: Godot CLI on `PATH` for headless checks and project runs.
-- Optional: API keys in `.env` for real image/model providers.
+- Scan project files and summarize scenes, scripts, resources, materials, textures, and models.
+- Search safe text files without reading dotfiles such as `.env`.
+- Create beginner-readable `.gd` scripts.
+- Create simple text `.tscn` scenes and add/update nodes.
+- Dry-run scene/script edits and return `plannedChanges` before writing.
+- Add input actions and autoloads to `project.godot`.
+- Create simple text material resources.
+- Copy project-local images and 3D models into asset folders.
+- Queue image, texture, sprite, and 3D model generation jobs with provider `none`.
+- Update generation job status after review.
+- Run static checks and Godot CLI checks when Godot is available.
+- Use the optional editor bridge for live editor status, scene snapshots, play/stop, and viewport screenshots.
 
-No API keys are committed. Use `.env.example` as the template.
+## What AI Cannot Do By Design
 
-## Quick Start
+- It cannot read or write outside the project root through MCP paths.
+- It cannot run arbitrary shell commands.
+- It cannot delete files or nodes.
+- It cannot edit binary `.scn` files as text.
+- It cannot call real generation providers unless you configure providers and secrets in `.env`.
+- It cannot safely guess private API keys, endpoints, cookies, or tokens.
+- It cannot bypass `GODOT_MCP_READ_ONLY=true`.
 
-Make sure the Godot executable is available on `PATH` before using run/check tools:
+## MCP Tools
 
-```powershell
-godot --version
-```
-
-On Windows, if Godot is a downloaded `.exe`, add its folder to the user `PATH`, then restart Codex and your terminal. Example for the current local layout:
-
-```powershell
-[Environment]::SetEnvironmentVariable(
-  "Path",
-  [Environment]::GetEnvironmentVariable("Path", "User") + ";C:\Users\gdima\Downloads",
-  "User"
-)
-```
-
-After that, `godot_check_errors` can run the real Godot headless check and `godot_run_project` can launch scenes. If you cannot modify `PATH`, set `GODOT_CLI` in `.env` to the full executable path.
-
-Run the smoke test from the project root:
-
-```powershell
-node .\tools\mcp-godot\test\smoke.mjs
-```
-
-If you use the Codex bundled Node.js runtime:
-
-```powershell
-& 'C:\Users\gdima\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe' '.\tools\mcp-godot\test\smoke.mjs'
-```
-
-Expected output:
-
-```text
-mcp-godot smoke test passed
-```
-
-## MCP Configuration
-
-Example Codex config:
-
-```toml
-[mcp_servers.godotMCP]
-command = "C:\\Users\\gdima\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.exe"
-args = [ "C:\\path\\to\\project\\tools\\mcp-godot\\src\\server.mjs", "--project-root", "C:\\path\\to\\project" ]
-startup_timeout_sec = 20
-env = { GODOT_PROJECT_ROOT = "C:\\path\\to\\project" }
-```
-
-Context7 can be added separately for documentation lookup:
-
-```powershell
-codex mcp add context7 -- npx -y @upstash/context7-mcp
-```
-
-Restart the AI client after changing MCP config.
+| Tool | Category | Mutates project | Purpose |
+| --- | --- | --- | --- |
+| `godot_help` | discovery | No | Show available workflows, categories, safety notes, and usage templates. |
+| `godot_doctor` | discovery | No | Check project setup, bridge reachability, providers, folders, and recommendations. |
+| `godot_codex_config` | discovery | No | Return ready-to-paste Codex MCP TOML for the current project root. |
+| `godot_bridge_status` | bridge | No | Check whether the optional Godot editor bridge is listening. |
+| `godot_editor_scene_snapshot` | bridge | No | Ask the editor bridge for open scene and selected-node context. |
+| `godot_project_scan` | inspect | No | Scan folders and classify scenes, scripts, resources, textures, materials, models, and assets. |
+| `godot_search_project` | inspect | No | Search safe text files for a query. |
+| `godot_list_scenes` | inspect | No | List `.tscn` and `.scn` scenes. |
+| `godot_list_scripts` | inspect | No | List `.gd` scripts with `extends` and `class_name` summaries. |
+| `godot_read_scene` | inspect | No | Parse a text `.tscn` scene and return node structure. |
+| `godot_create_scene` | edit | Yes | Create a text `.tscn` scene; supports `dry_run`. |
+| `godot_add_node` | edit | Yes | Add a node to a text `.tscn` scene; supports `dry_run`. |
+| `godot_update_node` | edit | Yes | Update safe basic node properties; supports `dry_run`. |
+| `godot_attach_script` | edit | Yes | Create or attach a GDScript to a scene node; supports `dry_run`. |
+| `godot_create_script` | edit | Yes | Create a beginner-readable `.gd` script; supports `dry_run`. |
+| `godot_create_input_action` | edit | Yes | Add or update an input action in `project.godot`. |
+| `godot_create_autoload` | edit | Yes | Add or update a script autoload in `project.godot`. |
+| `godot_create_material` | assets | Yes | Create a simple text `.tres` or `.material` resource. |
+| `godot_import_image` | assets | Yes | Copy a project-local image into an asset folder. |
+| `godot_generate_sprite` | assets | Yes | Generate or queue a sprite prompt. Provider `none` writes a job file. |
+| `godot_generate_texture` | assets | Yes | Generate or queue a texture prompt. Provider `none` writes a job file. |
+| `godot_import_3d_model` | assets | Yes | Copy a project-local `.glb`, `.gltf`, `.fbx`, or `.obj` model. |
+| `godot_generate_3d_model` | assets | Yes | Generate or queue a 3D model prompt. Provider `none` writes a job file. |
+| `godot_list_generation_jobs` | assets | No | List generation job JSON files. |
+| `godot_update_generation_job_status` | assets | Yes | Update a generation job status and optional note. |
+| `godot_run_project` | runtime | Yes | Run the project through Godot CLI or the editor bridge; defaults to dry run. |
+| `godot_runtime_status` | runtime | No | Report tracked CLI runtime and optional bridge play status. |
+| `godot_stop_project` | runtime | Yes | Stop a tracked CLI run or editor-bridge play session. |
+| `godot_capture_screenshot` | runtime | Yes | Save a runtime PNG screenshot through Godot Movie Maker. |
+| `godot_capture_editor_viewport` | runtime | Yes | Ask the editor bridge to save a 2D or 3D viewport PNG. |
+| `godot_check_errors` | inspect | No | Run static checks and optional Godot headless validation. |
 
 ## Editor Plugin Bridge
 
-Enable `AI MCP Bridge` in Godot:
+Enable `AI MCP Bridge` in Godot, then use the dock to:
 
-```text
-Project > Project Settings > Plugins > AI MCP Bridge > Enable
-```
+- start or stop the localhost bridge
+- choose a port from `1024` to `65535`
+- enable `Auto-start bridge`
+- copy Codex config
+- run Doctor
+- save AI client setup notes
+- save reusable AI agent instructions
+- queue editor chat prompts when `AI_CHAT_PROVIDER=none`
 
-The dock can start a localhost TCP bridge at:
-
-```text
-127.0.0.1:8765
-```
-
-The MCP tool `godot_bridge_status` checks whether the bridge is reachable.
-The bridge can also return a snapshot of the open editor scene, play/stop the project from the editor, and save a 2D/3D editor viewport screenshot.
-
-For game screenshots, use the MCP tool `godot_capture_screenshot`. It runs the project for a few frames through Godot Movie Maker and writes PNG output under `docs/assets/screenshots/runtime/` by default.
-
-Example game screenshot captured by MCP in `0.3.1`:
-
-<p align="center">
-  <img src="docs/assets/screenshots/runtime/third-person-capsule-0.3.1.png" alt="Runtime screenshot captured through MCP" width="720">
-</p>
-
-If the dock does not appear after enabling the plugin, disable and enable `AI MCP Bridge` again. The plugin also adds a menu item:
-
-```text
-Project > Tools > AI MCP Bridge: reload dock
-```
-
-The dock also includes an AI instruction panel. You can write the task inside Godot, choose the target client, and save ready-to-use notes:
-
-- `docs/AI_AGENT_INSTRUCTIONS.md`
-- `docs/AI_CLIENT_SETUP.md`
-
-Supported client presets:
-
-- Codex
-- Visual Studio / VS Code
-- Claude
-
-The dock also includes an editor chat panel. It does not talk to Codex directly. It reads `AI_CHAT_*` settings from `.env` and can call an OpenAI-compatible `/chat/completions` endpoint. If `AI_CHAT_PROVIDER=none`, chat prompts are saved as JSON jobs under `generation_jobs/chat/` without network access.
-
-<p align="center">
-  <img src="docs/assets/screenshots/ai-mcp-bridge-0.3.0.svg" alt="AI MCP Bridge dock screenshot" width="520">
-</p>
+The bridge listens only on `127.0.0.1`. If a port is already occupied, the dock reports that clearly and asks you to choose another port or stop the app using it.
 
 ## Providers
 
@@ -222,68 +208,48 @@ Supported 3D provider names:
 - `meshy`
 - `custom_http`
 
-When provider is `none`, no real asset generation happens. The request is saved as a JSON job under `generation_jobs/`.
+Provider `none` is the default. It writes JSON jobs under `generation_jobs/` and performs no network call.
 
-Real keys must come from `.env` or environment variables, never source files.
+Real keys must live in `.env` or environment variables, never in source files.
 
-Editor chat provider names:
+## Common Problems
 
-- `none`
-- `openai_compatible`
-
-Required `.env` fields for live editor chat:
-
-```text
-AI_CHAT_PROVIDER=openai_compatible
-AI_CHAT_BASE_URL=http://127.0.0.1:1234/v1
-AI_CHAT_MODEL=your-local-model
-AI_CHAT_API_KEY=
-```
-
-## Security Model
-
-- All paths are resolved inside the Godot project root.
-- Absolute destination paths are rejected.
-- Existing files are not overwritten unless the tool explicitly supports and receives `overwrite: true`.
-- Arbitrary shell commands are not exposed.
-- Godot CLI execution uses a whitelist of known command shapes.
-- `.env` is ignored by Git.
-- Logs are sanitized for common secret/key/token patterns.
-- `GODOT_MCP_READ_ONLY=true` blocks write/run/generation tools.
-
-## Documentation
-
-- `docs/MCP_GODOT_SETUP.md`
-- `docs/GODOT_MCP_RESEARCH.md`
-- `.agents/skills/*/SKILL.md`
-- `.codex/skills/*/SKILL.md`
+| Problem | What to do |
+| --- | --- |
+| `godot_doctor` says Godot CLI was not found | Install Godot 4.x on `PATH`, or set `GODOT_CLI` in `.env`. |
+| Bridge is not reachable | Open Godot, enable `AI MCP Bridge`, choose a port, and press `Start`. |
+| Port is occupied | Pick another port in the bridge dock, then copy Codex config again. |
+| Codex does not see tools | Restart Codex after editing MCP config. |
+| A write tool refuses to overwrite | Pass `overwrite: true` only after reviewing the existing file. |
+| Generation did not create an image/model | Check `generation_jobs/`; provider `none` queues jobs by design. |
+| A `.scn` scene cannot be edited | Use text `.tscn` scenes for file-based edits or use the editor bridge. |
+| `.env` is missing | Copy `.env.example` to `.env` and fill only the settings you need. |
 
 ## Validation
 
-Run:
+Run these from the project root:
 
 ```powershell
 node --check .\tools\mcp-godot\src\server.mjs
 node --check .\tools\mcp-godot\src\providers.mjs
 node .\tools\mcp-godot\test\smoke.mjs
+node .\tools\mcp-godot\test\version-check.mjs
 ```
 
-If Godot CLI is not available, `godot_check_errors` still runs static validation and reports that headless validation was skipped.
+The GitHub Actions workflow in `.github/workflows/ci.yml` runs the same checks.
 
-## Roadmap
+## More Recipes
 
-- WebSocket bridge with heartbeat/reconnect.
-- UndoRedo-backed editor mutations.
-- Runtime autoload bridge for input simulation and live runtime tree inspection.
-- Optional LSP/DAP/ClassDB integrations.
-- More provider adapters behind the existing safe interface.
-- Tool profiles for compact/full client modes if the tool surface grows.
-- Deeper editor-side workflows started directly from the AI instruction panel.
+Beginner workflows live in:
 
-## License
+- `docs/RECIPES.md`
+- `docs/MCP_GODOT_SETUP.md`
+- `docs/GODOT_MCP_RESEARCH.md`
+- `docs/AI_AGENT_INSTRUCTIONS.md`
+- `docs/AI_CLIENT_SETUP.md`
 
-MIT. Use it freely, including in personal, educational, and commercial projects.
+Example game screenshot captured by MCP in `0.3.1`:
 
-## Logo Note
-
-This is an unofficial Godot MCP integration project and is not endorsed by the Godot Foundation. The README artwork uses a custom Godot-inspired mark to show compatibility with Godot Engine. The original [Godot logo/icon](https://github.com/godotengine/godot/blob/master/icon.svg) is credited to Andrea Calabro and Godot Engine contributors; public logo metadata lists CC BY 4.0 / MIT-style terms for reuse.
+<p align="center">
+  <img src="docs/assets/screenshots/runtime/third-person-capsule-0.3.1.png" alt="Runtime screenshot captured through MCP" width="720">
+</p>

@@ -1,39 +1,18 @@
 # AI Client Setup
 
-Use this repository as a local MCP-powered Godot integration package. Keep the project path updated if you clone it somewhere else.
-
-## Codex
-
-Add the local MCP server to Codex:
+Use this MCP server from Codex:
 
 ```toml
 [mcp_servers.godotMCP]
 command = "node"
-args = [ "C:/Users/gdima/Documents/learn-personal/tools/mcp-godot/src/server.mjs", "--project-root", "C:/Users/gdima/Documents/learn-personal" ]
+args = [ "<PROJECT_ROOT>/tools/mcp-godot/src/server.mjs", "--project-root", "<PROJECT_ROOT>" ]
 startup_timeout_sec = 20
+env = { GODOT_PROJECT_ROOT = "<PROJECT_ROOT>", GODOT_MCP_PORT = "8765" }
 ```
 
-Restart Codex and ask it to run `godot_project_scan` first.
+Replace `<PROJECT_ROOT>` with the folder that contains `project.godot`. If you used the PowerShell installer, copy the ready block from `godot-mcp.codex.toml` instead.
 
-## Visual Studio / VS Code
-
-Use the MCP server with a Visual Studio or VS Code extension that supports MCP stdio servers.
-
-```powershell
-node C:/Users/gdima/Documents/learn-personal/tools/mcp-godot/src/server.mjs --project-root C:/Users/gdima/Documents/learn-personal
-```
-
-Keep provider keys in `.env`; do not paste secrets into editor prompts.
-
-## Claude
-
-Add this project as a local stdio MCP server in Claude Desktop or another Claude MCP client.
-
-```powershell
-node C:/Users/gdima/Documents/learn-personal/tools/mcp-godot/src/server.mjs --project-root C:/Users/gdima/Documents/learn-personal
-```
-
-After reconnecting, start with `godot_help` and `godot_project_scan`.
+Then restart Codex and ask it to run `godot_doctor` first.
 
 ## Shared Rules
 

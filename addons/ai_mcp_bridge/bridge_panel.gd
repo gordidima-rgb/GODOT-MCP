@@ -2,14 +2,20 @@
 extends VBoxContainer
 
 const DEFAULT_PORT := 8765
+const MIN_PORT := 1024
+const MAX_PORT := 65535
 const MAX_HISTORY := 8
 const MAX_SNAPSHOT_DEPTH := 16
 const INSTRUCTIONS_PATH := "res://docs/AI_AGENT_INSTRUCTIONS.md"
 const CLIENT_SETUP_PATH := "res://docs/AI_CLIENT_SETUP.md"
 const ALLOWED_ROOT_TYPES := ["Node2D", "Node3D", "Control", "CharacterBody2D", "CharacterBody3D"]
 const CLIENT_NAMES := ["Codex", "Visual Studio / VS Code", "Claude"]
+const AUTO_START_SETTING := "ai_mcp_bridge/auto_start"
+const PORT_SETTING := "ai_mcp_bridge/port"
 
 var _running := false
+var _auto_start := false
+var _port := DEFAULT_PORT
 var _server := TCPServer.new()
 var _clients: Array[StreamPeerTCP] = []
 var _last_commands: Array[String] = []
@@ -19,6 +25,9 @@ var _status_label: Label
 var _port_label: Label
 var _commands_label: RichTextLabel
 var _errors_label: RichTextLabel
+var _auto_start_check: CheckBox
+var _port_spin: SpinBox
+var _doctor_label: RichTextLabel
 var _client_select: OptionButton
 var _client_setup_label: RichTextLabel
 var _instruction_edit: TextEdit
@@ -30,8 +39,11 @@ func _init() -> void:
     name = "AI MCP Bridge"
 
 func _ready() -> void:
+    _load_editor_settings()
     _build_ui()
     _refresh_status()
+    if _auto_start:
+        _start_bridge()
     set_process(true)
 
 func _process(_delta: float) -> void:
@@ -54,6 +66,29 @@ func _build_ui() -> void:
     _port_label = Label.new()
     add_child(_port_label)
 
+    var port_row := HBoxContainer.new()
+    add_child(port_row)
+
+    var port_title := Label.new()
+    port_title.text = "Port"
+    port_row.add_child(port_title)
+
+    _port_spin = SpinBox.new()
+    _port_spin.min_value = MIN_PORT
+    _port_spin.max_value = MAX_PORT
+    _port_spin.step = 1
+    _port_spin.value = _port
+    _port_spin.rounded = true
+    _port_spin.tooltip_text = "Local bridge port. Valid range: 1024-65535."
+    _port_spin.value_changed.connect(_on_port_changed)
+    port_row.add_child(_port_spin)
+
+    _auto_start_check = CheckBox.new()
+    _auto_start_check.text = "Auto-start bridge"
+    _auto_start_check.button_pressed = _auto_start
+    _auto_start_check.toggled.connect(_on_auto_start_toggled)
+    add_child(_auto_start_check)
+
     var row := HBoxContainer.new()
     add_child(row)
 
@@ -66,6 +101,24 @@ func _build_ui() -> void:
     _stop_button.text = "Stop"
     _stop_button.pressed.connect(_on_stop_pressed)
     row.add_child(_stop_button)
+
+    var copy_config_button := Button.new()
+    copy_config_button.text = "Copy Codex config"
+    copy_config_button.tooltip_text = "Copy ready-to-use Codex MCP TOML to the clipboard."
+    copy_config_button.pressed.connect(_on_copy_codex_config_pressed)
+    row.add_child(copy_config_button)
+
+    var doctor_button := Button.new()
+    doctor_button.text = "Run Doctor"
+    doctor_button.tooltip_text = "Check local bridge setup and show beginner-friendly recommendations."
+    doctor_button.pressed.connect(_on_run_doctor_pressed)
+    row.add_child(doctor_button)
+
+    _doctor_label = RichTextLabel.new()
+    _doctor_label.custom_minimum_size = Vector2(360, 96)
+    _doctor_label.fit_content = true
+    _doctor_label.text = "Doctor has not run yet."
+    add_child(_doctor_label)
 
     _build_instruction_ui()
     _build_chat_ui()
@@ -163,13 +216,23 @@ func _build_chat_ui() -> void:
     add_child(chat_panel)
 
 func _on_start_pressed() -> void:
+    _start_bridge()
+
+func _start_bridge() -> void:
+    if _running:
+        return
     # This bridge listens only on localhost. It is for editor-side commands, not public networking.
-    var error := _server.listen(DEFAULT_PORT, "127.0.0.1")
+    _port = _current_port()
+    var error := _server.listen(_port, "127.0.0.1")
     if error != OK:
-        record_error("Could not start bridge: %s" % error_string(error))
+        if error == ERR_ALREADY_IN_USE:
+            record_error("Port %d is already in use. Choose another port or stop the app using it." % _port)
+        else:
+            record_error("Could not start bridge on port %d: %s" % [_port, error_string(error)])
+        _refresh_status()
         return
     _running = true
-    record_command("Start bridge requested")
+    record_command("Start bridge requested on port %d" % _port)
     _refresh_status()
 
 func _on_stop_pressed() -> void:
@@ -193,9 +256,14 @@ func _refresh_status() -> void:
     if _status_label == null:
         return
     _status_label.text = "Status: " + ("running" if _running else "stopped")
-    _port_label.text = "Port: %d on 127.0.0.1" % DEFAULT_PORT
+    _port_label.text = "Port: %d on 127.0.0.1" % _port
     _start_button.disabled = _running
     _stop_button.disabled = not _running
+    if _port_spin != null:
+        _port_spin.editable = not _running
+        _port_spin.value = _port
+    if _auto_start_check != null:
+        _auto_start_check.button_pressed = _auto_start
     _refresh_quick_guide()
     _refresh_history()
 
@@ -212,8 +280,8 @@ func _refresh_quick_guide() -> void:
     _quick_guide_label.text = "\n".join([
         "Mini guide: 1, 2, 3",
         "1. Bridge: " + bridge_step + ".",
-        "2. Pick client: Codex, then click Save client setup.",
-        "3. Copy docs/AI_CLIENT_SETUP.md into Codex config, restart Codex, then ask: run godot_project_scan.",
+        "2. Click Run Doctor, then Copy Codex config.",
+        "3. Paste the TOML into Codex config, restart Codex, then ask: run godot_doctor.",
         "Optional: for local chat, keep provider none and press Queue, or set AI_CHAT_* in .env and press Reload .env."
     ])
 
@@ -249,6 +317,29 @@ func _on_save_client_setup_pressed() -> void:
     else:
         record_error(String(result.get("error", "Could not save client setup.")))
 
+func _on_port_changed(value: float) -> void:
+    if _running:
+        record_error("Stop the bridge before changing the port.")
+        _refresh_status()
+        return
+    _port = clampi(int(value), MIN_PORT, MAX_PORT)
+    _save_editor_setting(PORT_SETTING, _port)
+    _refresh_status()
+
+func _on_auto_start_toggled(enabled: bool) -> void:
+    _auto_start = enabled
+    _save_editor_setting(AUTO_START_SETTING, _auto_start)
+    record_command("Auto-start bridge " + ("enabled" if _auto_start else "disabled"))
+
+func _on_copy_codex_config_pressed() -> void:
+    DisplayServer.clipboard_set(_codex_config_text())
+    record_command("Copied Codex config to clipboard")
+
+func _on_run_doctor_pressed() -> void:
+    var result := _run_local_doctor()
+    _doctor_label.text = _format_doctor_result(result)
+    record_command("Doctor checked bridge setup")
+
 func _current_client_name() -> String:
     if _client_select == null:
         return String(CLIENT_NAMES[0])
@@ -256,6 +347,22 @@ func _current_client_name() -> String:
     if selected < 0 or selected >= CLIENT_NAMES.size():
         return String(CLIENT_NAMES[0])
     return String(CLIENT_NAMES[selected])
+
+func _load_editor_settings() -> void:
+    var settings := EditorInterface.get_editor_settings()
+    if settings.has_setting(AUTO_START_SETTING):
+        _auto_start = bool(settings.get_setting(AUTO_START_SETTING))
+    if settings.has_setting(PORT_SETTING):
+        _port = clampi(int(settings.get_setting(PORT_SETTING)), MIN_PORT, MAX_PORT)
+
+func _save_editor_setting(key: String, value: Variant) -> void:
+    var settings := EditorInterface.get_editor_settings()
+    settings.set_setting(key, value)
+
+func _current_port() -> int:
+    if _port_spin == null:
+        return clampi(_port, MIN_PORT, MAX_PORT)
+    return clampi(int(_port_spin.value), MIN_PORT, MAX_PORT)
 
 func _default_instruction_text() -> String:
     var lines := [
@@ -271,18 +378,7 @@ func _client_setup_text(client_name: String) -> String:
     var project_root := _project_root_for_docs()
     match client_name:
         "Codex":
-            return "\n".join([
-                "Use this MCP server from Codex:",
-                "",
-                "```toml",
-                "[mcp_servers.godotMCP]",
-                "command = \"node\"",
-                "args = [ \"" + project_root + "/tools/mcp-godot/src/server.mjs\", \"--project-root\", \"" + project_root + "\" ]",
-                "startup_timeout_sec = 20",
-                "```",
-                "",
-                "Then restart Codex and ask it to run `godot_project_scan` first."
-            ])
+            return "Use this MCP server from Codex:\n\n```toml\n" + _codex_config_text() + "```\n\nThen restart Codex and ask it to run `godot_doctor` first."
         "Visual Studio / VS Code":
             return "\n".join([
                 "Use the MCP server with a Visual Studio or VS Code extension that supports MCP stdio servers.",
@@ -303,6 +399,59 @@ func _client_setup_text(client_name: String) -> String:
             ])
         _:
             return "Select a supported AI client."
+
+func _codex_config_text() -> String:
+    var project_root := _project_root_for_docs()
+    return "\n".join([
+        "[mcp_servers.godotMCP]",
+        "command = \"node\"",
+        "args = [ \"" + project_root + "/tools/mcp-godot/src/server.mjs\", \"--project-root\", \"" + project_root + "\" ]",
+        "startup_timeout_sec = 20",
+        "env = { GODOT_PROJECT_ROOT = \"" + project_root + "\", GODOT_MCP_PORT = \"" + str(_port) + "\" }",
+        ""
+    ])
+
+func _run_local_doctor() -> Dictionary:
+    var project_exists := FileAccess.file_exists("res://project.godot")
+    var env_exists := FileAccess.file_exists("res://.env")
+    var folders: Dictionary = {}
+    for folder in ["res://scenes", "res://scripts", "res://Assets", "res://assets", "res://generation_jobs"]:
+        folders[folder] = DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(folder))
+    var recommendations: Array[String] = []
+    if not project_exists:
+        recommendations.append("project.godot is missing.")
+    if not _running:
+        recommendations.append("Press Start before using editor bridge tools.")
+    if not env_exists:
+        recommendations.append("Create .env from .env.example when you need providers or GODOT_CLI.")
+    for folder in folders.keys():
+        if not bool(folders[folder]):
+            recommendations.append("Create " + String(folder).replace("res://", "") + "/ when that workflow is needed.")
+    return {
+        "project_godot": project_exists,
+        "env": env_exists,
+        "running": _running,
+        "port": _port,
+        "folders": folders,
+        "recommendations": recommendations
+    }
+
+func _format_doctor_result(result: Dictionary) -> String:
+    var lines: Array[String] = [
+        "Doctor",
+        "project.godot: " + ("ok" if bool(result.get("project_godot", false)) else "missing"),
+        ".env: " + ("found" if bool(result.get("env", false)) else "not found"),
+        "bridge: " + ("running" if bool(result.get("running", false)) else "stopped"),
+        "port: " + str(int(result.get("port", DEFAULT_PORT)))
+    ]
+    var recommendations: Array = result.get("recommendations", [])
+    if recommendations.is_empty():
+        lines.append("Recommendations: none.")
+    else:
+        lines.append("Recommendations:")
+        for item in recommendations:
+            lines.append("- " + String(item))
+    return "\n".join(lines)
 
 func _write_text_file(res_path: String, content: String) -> Dictionary:
     if not _is_safe_res_path(res_path, ".md"):
@@ -377,7 +526,7 @@ func _bridge_status() -> Dictionary:
     return {
         "ok": true,
         "running": _running,
-        "port": DEFAULT_PORT,
+        "port": _port,
         "is_playing_scene": EditorInterface.is_playing_scene(),
         "playing_scene": EditorInterface.get_playing_scene(),
         "edited_scene": _node_scene_path(edited_root),

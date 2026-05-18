@@ -7,8 +7,8 @@ import net from "node:net";
 import path from "node:path";
 import { createGenerationJob, generateImageWithProvider, generateModelWithProvider, IMAGE_PROVIDERS, MODEL_3D_PROVIDERS } from "./providers.mjs";
 import { isAllowedGodotCli, safeFilenamePart, safeTimestamp, sanitizeForLog } from "./security.mjs";
+import { SERVER_VERSION } from "./version.mjs";
 
-const SERVER_VERSION = "0.3.1";
 const SUPPORTED_PROTOCOLS = new Set(["2025-06-18", "2025-03-26", "2024-11-05"]);
 const DEFAULT_PROTOCOL = "2025-06-18";
 const MAX_TEXT_BYTES = 1024 * 1024;
@@ -48,7 +48,11 @@ const WRITE_TOOLS = new Set([
   "godot_run_project",
   "godot_stop_project",
   "godot_capture_screenshot",
-  "godot_capture_editor_viewport"
+  "godot_capture_editor_viewport",
+  "godot_create_input_action",
+  "godot_create_autoload",
+  "godot_create_material",
+  "godot_update_generation_job_status"
 ]);
 let runningGame = null;
 
@@ -57,6 +61,13 @@ const tools = [
     tool: { type: "string", description: "Optional exact tool name to describe." },
     category: { type: "string", description: "Optional category: overview, workflows, coverage, safety, bridge, generation." },
     task: { type: "string", description: "Optional task description for a suggested tool chain." }
+  }),
+  tool("godot_doctor", "Run a beginner-friendly health check for project setup, bridge connectivity, providers, and expected folders.", {
+    timeout_ms: { type: "integer", minimum: 200, maximum: 5000, default: 1000 }
+  }),
+  tool("godot_codex_config", "Return ready-to-paste Codex MCP TOML for this project root.", {
+    server_name: { type: "string", default: "godotMCP" },
+    startup_timeout_sec: { type: "integer", minimum: 1, maximum: 120, default: 20 }
   }),
   tool("godot_bridge_status", "Check whether the optional Godot EditorPlugin bridge is listening on localhost.", {
     timeout_ms: { type: "integer", minimum: 200, maximum: 5000, default: 1000 }
@@ -69,8 +80,20 @@ const tools = [
     max_files: { type: "integer", minimum: 1, maximum: 30000, default: 8000 },
     max_depth: { type: "integer", minimum: 1, maximum: 12, default: 6 }
   }),
+  tool("godot_search_project", "Search safe text files in the project without reading secrets from dotfiles.", {
+    query: { type: "string" },
+    folder: { type: "string", default: "" },
+    extensions: { type: "array", items: { type: "string" }, default: [] },
+    case_sensitive: { type: "boolean", default: false },
+    max_results: { type: "integer", minimum: 1, maximum: 500, default: 50 },
+    max_file_bytes: { type: "integer", minimum: 1024, maximum: 1048576, default: 262144 }
+  }, ["query"]),
   tool("godot_list_scenes", "List .tscn and .scn scenes.", {
     folder: { type: "string", description: "Optional project-local folder or res:// path.", default: "" }
+  }),
+  tool("godot_list_scripts", "List GDScript files with extends and class_name summaries.", {
+    folder: { type: "string", description: "Optional project-local folder or res:// path.", default: "" },
+    include_text: { type: "boolean", default: false }
   }),
   tool("godot_read_scene", "Read a text .tscn scene and return node structure. Binary .scn files are reported as unsupported for direct text parsing.", {
     path: { type: "string" },
@@ -80,19 +103,22 @@ const tools = [
     path: { type: "string" },
     root_type: { type: "string", enum: [...ALLOWED_ROOT_NODES], default: "Node2D" },
     root_name: { type: "string" },
-    overwrite: { type: "boolean", default: false }
+    overwrite: { type: "boolean", default: false },
+    dry_run: { type: "boolean", default: false }
   }, ["path"]),
   tool("godot_add_node", "Add a node to a .tscn scene with safe basic properties.", {
     scene_path: { type: "string" },
     parent_path: { type: "string", default: "." },
     node_type: { type: "string" },
     node_name: { type: "string" },
-    properties: { type: "object", additionalProperties: true, default: {} }
+    properties: { type: "object", additionalProperties: true, default: {} },
+    dry_run: { type: "boolean", default: false }
   }, ["scene_path", "node_type", "node_name"]),
   tool("godot_update_node", "Update safe basic properties on a node in a .tscn scene.", {
     scene_path: { type: "string" },
     node_path: { type: "string", description: "Use . for the root node, or paths like Player/Camera." },
-    properties: { type: "object", additionalProperties: true }
+    properties: { type: "object", additionalProperties: true },
+    dry_run: { type: "boolean", default: false }
   }, ["scene_path", "node_path", "properties"]),
   tool("godot_attach_script", "Create or attach a GDScript to a node in a .tscn scene.", {
     scene_path: { type: "string" },
@@ -100,7 +126,8 @@ const tools = [
     script_path: { type: "string" },
     extends: { type: "string", default: "Node" },
     content: { type: "string" },
-    overwrite_script: { type: "boolean", default: false }
+    overwrite_script: { type: "boolean", default: false },
+    dry_run: { type: "boolean", default: false }
   }, ["scene_path", "script_path"]),
   tool("godot_create_script", "Create a beginner-readable Godot 4 GDScript file.", {
     path: { type: "string" },
@@ -108,6 +135,27 @@ const tools = [
     class_name: { type: "string" },
     description: { type: "string" },
     content: { type: "string" },
+    overwrite: { type: "boolean", default: false },
+    dry_run: { type: "boolean", default: false }
+  }, ["path"]),
+  tool("godot_create_input_action", "Add or update a Godot input action in project.godot.", {
+    action: { type: "string" },
+    deadzone: { type: "number", minimum: 0, maximum: 1, default: 0.5 },
+    events: { type: "array", items: { type: "object", additionalProperties: true }, default: [] },
+    overwrite: { type: "boolean", default: false }
+  }, ["action"]),
+  tool("godot_create_autoload", "Add or update a script autoload entry in project.godot.", {
+    name: { type: "string" },
+    script_path: { type: "string" },
+    singleton: { type: "boolean", default: true },
+    overwrite: { type: "boolean", default: false }
+  }, ["name", "script_path"]),
+  tool("godot_create_material", "Create a simple text .tres/.material resource for StandardMaterial3D or CanvasItemMaterial.", {
+    path: { type: "string" },
+    material_type: { type: "string", enum: ["StandardMaterial3D", "CanvasItemMaterial"], default: "StandardMaterial3D" },
+    albedo_color: { type: "array", items: { type: "number" }, default: [1, 1, 1, 1] },
+    roughness: { type: "number", minimum: 0, maximum: 1, default: 0.5 },
+    metallic: { type: "number", minimum: 0, maximum: 1, default: 0 },
     overwrite: { type: "boolean", default: false }
   }, ["path"]),
   tool("godot_import_image", "Copy a project-local image into the project and optionally run a Godot import pass.", {
@@ -143,6 +191,17 @@ const tools = [
     target_path: { type: "string" },
     name: { type: "string" }
   }, ["prompt"]),
+  tool("godot_list_generation_jobs", "List queued or completed generation job JSON files.", {
+    kind: { type: "string", enum: ["all", "images", "models", "chat"], default: "all" },
+    status: { type: "string" },
+    max_jobs: { type: "integer", minimum: 1, maximum: 1000, default: 100 }
+  }),
+  tool("godot_update_generation_job_status", "Update the status and optional note on a generation job JSON file.", {
+    job_path: { type: "string" },
+    id: { type: "string" },
+    status: { type: "string", enum: ["queued", "in_progress", "done", "failed", "canceled"] },
+    note: { type: "string" }
+  }, ["status"]),
   tool("godot_run_project", "Run the current project with Godot CLI or ask the editor bridge to play it. Uses a strict Godot-only command whitelist.", {
     scene_path: { type: "string" },
     mode: { type: "string", enum: ["cli", "editor"], default: "cli" },
@@ -277,21 +336,30 @@ async function callTool(params) {
   try {
     const handlers = {
       godot_help: godotHelp,
+      godot_doctor: godotDoctor,
+      godot_codex_config: godotCodexConfig,
       godot_bridge_status: godotBridgeStatus,
       godot_editor_scene_snapshot: godotEditorSceneSnapshot,
       godot_project_scan: godotProjectScan,
+      godot_search_project: godotSearchProject,
       godot_list_scenes: godotListScenes,
+      godot_list_scripts: godotListScripts,
       godot_read_scene: godotReadScene,
       godot_create_scene: godotCreateScene,
       godot_add_node: godotAddNode,
       godot_update_node: godotUpdateNode,
       godot_attach_script: godotAttachScript,
       godot_create_script: godotCreateScript,
+      godot_create_input_action: godotCreateInputAction,
+      godot_create_autoload: godotCreateAutoload,
+      godot_create_material: godotCreateMaterial,
       godot_import_image: godotImportImage,
       godot_generate_sprite: godotGenerateSprite,
       godot_generate_texture: godotGenerateTexture,
       godot_import_3d_model: godotImport3dModel,
       godot_generate_3d_model: godotGenerate3dModel,
+      godot_list_generation_jobs: godotListGenerationJobs,
+      godot_update_generation_job_status: godotUpdateGenerationJobStatus,
       godot_run_project: godotRunProject,
       godot_runtime_status: godotRuntimeStatus,
       godot_stop_project: godotStopProject,
@@ -349,6 +417,80 @@ async function godotHelp(args) {
   };
 }
 
+async function godotDoctor(args) {
+  const timeoutMs = clampInteger(args.timeout_ms ?? 1000, 200, 5000);
+  const recommendations = [];
+  const projectGodotPath = path.join(projectRoot, "project.godot");
+  const projectFileExists = await pathExists(projectGodotPath);
+  const godot = await findGodotCommand();
+  const bridge = await callEditorBridge({ command: "status" }, timeoutMs);
+  const envExists = await pathExists(path.join(projectRoot, ".env"));
+  const folders = {};
+
+  for (const folder of ["scenes", "scripts", "Assets", "assets", "generation_jobs"]) {
+    folders[folder] = await folderStatus(path.join(projectRoot, folder));
+  }
+
+  const providers = providerStatus(env);
+  if (!projectFileExists) {
+    recommendations.push("Create or restore project.godot before using project tools.");
+  }
+  if (!godot) {
+    recommendations.push("Install Godot 4.x CLI on PATH or set GODOT_CLI in .env.");
+  }
+  if (!bridge.connected) {
+    recommendations.push("Open Godot, enable the AI MCP Bridge plugin, and press Start if editor-backed tools are needed.");
+  }
+  if (!envExists) {
+    recommendations.push("Create .env from .env.example when you need Godot CLI or real provider settings.");
+  }
+  for (const [name, status] of Object.entries(folders)) {
+    if (!status.exists) {
+      recommendations.push(`Create ${name}/ when that workflow is needed.`);
+    }
+  }
+  if (providers.image.provider === "none" && providers.model3d.provider === "none") {
+    recommendations.push("Generation providers are set to none; prompts will be saved as jobs instead of calling real services.");
+  }
+
+  return {
+    ok: projectFileExists,
+    projectRoot,
+    serverVersion: SERVER_VERSION,
+    nodeVersion: process.version,
+    projectGodot: { exists: projectFileExists, path: "res://project.godot" },
+    godotCli: godot ? { found: true, command: godot } : { found: false },
+    bridge: {
+      reachable: Boolean(bridge.connected),
+      host: BRIDGE_HOST,
+      port: BRIDGE_PORT,
+      status: bridge
+    },
+    env: { exists: envExists, path: "res://.env" },
+    providers,
+    folders,
+    recommendations
+  };
+}
+
+async function godotCodexConfig(args) {
+  const serverName = args.server_name ?? "godotMCP";
+  if (!/^[A-Za-z_][A-Za-z0-9_-]*$/.test(serverName)) {
+    throw new Error("server_name must be a TOML-safe identifier.");
+  }
+  const startupTimeout = clampInteger(args.startup_timeout_sec ?? 20, 1, 120);
+  const serverPath = path.join(projectRoot, "tools", "mcp-godot", "src", "server.mjs");
+  const toml = [
+    `[mcp_servers.${serverName}]`,
+    `command = ${tomlString(process.execPath)}`,
+    `args = [ ${tomlString(serverPath)}, "--project-root", ${tomlString(projectRoot)} ]`,
+    `startup_timeout_sec = ${startupTimeout}`,
+    `env = { GODOT_PROJECT_ROOT = ${tomlString(projectRoot)} }`,
+    ""
+  ].join("\n");
+  return { ok: true, projectRoot, serverName, toml };
+}
+
 async function godotBridgeStatus(args) {
   return callEditorBridge({ command: "status" }, clampInteger(args.timeout_ms ?? 1000, 200, 5000));
 }
@@ -387,6 +529,47 @@ async function godotProjectScan(args) {
   };
 }
 
+async function godotSearchProject(args) {
+  requireString(args.query, "query");
+  const query = args.case_sensitive ? args.query : args.query.toLowerCase();
+  const folder = args.folder ? await resolveProjectPath(args.folder, { expectDirectory: true, mustExist: true }) : projectRoot;
+  const maxResults = clampInteger(args.max_results ?? 50, 1, 500);
+  const maxFileBytes = clampInteger(args.max_file_bytes ?? 262144, 1024, 1048576);
+  const allowedExtensions = normalizeExtensionFilter(args.extensions);
+  const files = await walk(folder, { maxFiles: 30000 });
+  const matches = [];
+
+  for (const rel of files) {
+    if (matches.length >= maxResults) {
+      break;
+    }
+    const ext = path.extname(rel).toLowerCase();
+    if (allowedExtensions.size > 0 ? !allowedExtensions.has(ext) : !isDefaultSearchExtension(ext, rel)) {
+      continue;
+    }
+    const abs = path.join(projectRoot, fromProjectSeparators(rel));
+    let text;
+    try {
+      text = await readTextFile(abs, maxFileBytes);
+    } catch {
+      continue;
+    }
+    const lines = textToLines(text);
+    for (let index = 0; index < lines.length && matches.length < maxResults; index += 1) {
+      const haystack = args.case_sensitive ? lines[index] : lines[index].toLowerCase();
+      if (haystack.includes(query)) {
+        matches.push({
+          path: toResPath(abs),
+          line: index + 1,
+          preview: lines[index].trim().slice(0, 240)
+        });
+      }
+    }
+  }
+
+  return { ok: true, query: args.query, count: matches.length, matches };
+}
+
 async function godotListScenes(args) {
   const folder = args.folder ? await resolveProjectPath(args.folder, { expectDirectory: true, mustExist: true }) : projectRoot;
   const files = await walk(folder, { maxFiles: 10000 });
@@ -404,6 +587,25 @@ async function godotListScenes(args) {
     scenes.push(entry);
   }
   return { ok: true, scenes };
+}
+
+async function godotListScripts(args) {
+  const folder = args.folder ? await resolveProjectPath(args.folder, { expectDirectory: true, mustExist: true }) : projectRoot;
+  const files = await walk(folder, { maxFiles: 10000 });
+  const scripts = [];
+  for (const rel of files.filter((file) => SCRIPT_EXTENSIONS.has(path.extname(file).toLowerCase()))) {
+    const abs = path.join(projectRoot, fromProjectSeparators(rel));
+    const text = await readTextFile(abs, MAX_TEXT_BYTES);
+    const info = parseScriptInfo(text);
+    scripts.push({
+      path: toResPath(abs),
+      extends: info.extends,
+      className: info.className,
+      lineCount: textToLines(text).length,
+      ...(args.include_text ? { text } : {})
+    });
+  }
+  return { ok: true, scripts };
 }
 
 async function godotReadScene(args) {
@@ -428,7 +630,6 @@ async function godotCreateScene(args) {
   requireString(args.path, "path");
   const abs = await resolveProjectPath(args.path, { forWrite: true });
   assertExtension(abs, ".tscn");
-  await assertCanWrite(abs, Boolean(args.overwrite));
   const rootType = args.root_type ?? "Node2D";
   if (!ALLOWED_ROOT_NODES.has(rootType)) {
     throw new Error(`root_type must be one of: ${[...ALLOWED_ROOT_NODES].join(", ")}.`);
@@ -442,6 +643,18 @@ async function godotCreateScene(args) {
     `[node name=${godotString(rootName)} type="${rootType}"]`,
     ""
   ].join("\n");
+  if (args.dry_run === true) {
+    return plannedResult([
+      {
+        action: await pathExists(abs) ? "overwrite_file" : "create_file",
+        path: toResPath(abs),
+        allowedOnlyWithOverwrite: await pathExists(abs) && !args.overwrite,
+        bytes: Buffer.byteLength(text, "utf8"),
+        preview: text
+      }
+    ], { path: toResPath(abs), rootType, rootName });
+  }
+  await assertCanWrite(abs, Boolean(args.overwrite));
   await fs.mkdir(path.dirname(abs), { recursive: true });
   await fs.writeFile(abs, text, "utf8");
   return { ok: true, path: toResPath(abs), rootType, rootName, created: true, overwritten: Boolean(args.overwrite) };
@@ -466,14 +679,20 @@ async function godotAddNode(args) {
 
   const lines = textToLines(text);
   const insert = [];
-  if (properties.newResources.length > 0) {
-    insertResources(lines, scene, properties.newResources);
-  }
   insert.push("", `[node name=${godotString(nodeName)} type="${nodeType}" parent=${godotString(parentPath)}]`);
   for (const line of properties.lines) {
     insert.push(line);
   }
   insert.push("");
+  if (args.dry_run === true) {
+    return plannedResult([
+      ...properties.newResources.map((resource) => ({ action: "add_ext_resource", scene: toResPath(abs), resource })),
+      { action: "add_node", scene: toResPath(abs), nodePath, nodeType, parentPath, lines: insert }
+    ], { scene: toResPath(abs), nodePath, nodeType, parentPath });
+  }
+  if (properties.newResources.length > 0) {
+    insertResources(lines, scene, properties.newResources);
+  }
   await fs.writeFile(abs, `${lines.join("\n")}${insert.join("\n")}`, "utf8");
   return { ok: true, scene: toResPath(abs), nodePath, nodeType, parentPath, added: true };
 }
@@ -485,6 +704,12 @@ async function godotUpdateNode(args) {
   const node = findSceneNode(scene, args.node_path);
   const properties = await prepareProperties(args.properties ?? {}, scene);
   const lines = textToLines(text);
+  if (args.dry_run === true) {
+    return plannedResult([
+      ...properties.newResources.map((resource) => ({ action: "add_ext_resource", scene: toResPath(abs), resource })),
+      { action: "update_node", scene: toResPath(abs), nodePath: node.path, properties: properties.propertyNames, lines: properties.lines }
+    ], { scene: toResPath(abs), nodePath: node.path, updatedProperties: properties.propertyNames });
+  }
   if (properties.newResources.length > 0) {
     insertResources(lines, scene, properties.newResources);
   }
@@ -497,6 +722,34 @@ async function godotAttachScript(args) {
   requireString(args.script_path, "script_path");
   const scriptAbs = await resolveProjectPath(args.script_path, { forWrite: true });
   assertExtension(scriptAbs, ".gd");
+  if (args.dry_run === true) {
+    const sceneAbs = await readWritableScenePath(args.scene_path);
+    const scene = parseSceneText(await readTextFile(sceneAbs, MAX_TEXT_BYTES));
+    const node = findSceneNode(scene, args.node_path ?? ".");
+    const scriptExists = await pathExists(scriptAbs);
+    const plannedChanges = [];
+    if (!scriptExists || (args.overwrite_script && args.content != null)) {
+      const content = buildScriptContent({
+        path: args.script_path,
+        extends: args.extends ?? "Node",
+        content: args.content,
+        description: "Script attached through godot_attach_script."
+      });
+      plannedChanges.push({
+        action: scriptExists ? "overwrite_file" : "create_file",
+        path: toResPath(scriptAbs),
+        bytes: Buffer.byteLength(content, "utf8"),
+        preview: content
+      });
+    }
+    plannedChanges.push({
+      action: "attach_script",
+      scene: toResPath(sceneAbs),
+      nodePath: node.path,
+      script: toResPath(scriptAbs)
+    });
+    return plannedResult(plannedChanges, { scene: toResPath(sceneAbs), nodePath: node.path, script: toResPath(scriptAbs) });
+  }
   try {
     await fs.access(scriptAbs, fsConstants.R_OK);
   } catch {
@@ -529,11 +782,97 @@ async function godotCreateScript(args) {
   requireString(args.path, "path");
   const abs = await resolveProjectPath(args.path, { forWrite: true });
   assertExtension(abs, ".gd");
-  await assertCanWrite(abs, Boolean(args.overwrite));
   const content = buildScriptContent(args);
+  if (args.dry_run === true) {
+    return plannedResult([
+      {
+        action: await pathExists(abs) ? "overwrite_file" : "create_file",
+        path: toResPath(abs),
+        allowedOnlyWithOverwrite: await pathExists(abs) && !args.overwrite,
+        bytes: Buffer.byteLength(content, "utf8"),
+        preview: content
+      }
+    ], { path: toResPath(abs) });
+  }
+  await assertCanWrite(abs, Boolean(args.overwrite));
   await fs.mkdir(path.dirname(abs), { recursive: true });
   await fs.writeFile(abs, content, "utf8");
   return { ok: true, path: toResPath(abs), created: true, overwritten: Boolean(args.overwrite) };
+}
+
+async function godotCreateInputAction(args) {
+  requireString(args.action, "action");
+  if (!isGodotIdentifier(args.action)) {
+    throw new Error("action must be a Godot-style identifier, for example jump or move_left.");
+  }
+  const deadzone = clampNumber(args.deadzone ?? 0.5, 0, 1);
+  const events = Array.isArray(args.events) ? args.events.map(serializeInputEvent) : [];
+  const projectFile = path.join(projectRoot, "project.godot");
+  const text = await readTextFile(projectFile, MAX_TEXT_BYTES);
+  const value = `{"deadzone":${formatNumber(deadzone)},"events":[${events.join(", ")}]}`;
+  const updated = setProjectSetting(text, "input", args.action, value, Boolean(args.overwrite));
+  await fs.writeFile(projectFile, updated.text, "utf8");
+  return {
+    ok: true,
+    projectFile: "res://project.godot",
+    action: args.action,
+    operation: updated.operation,
+    events: events.length
+  };
+}
+
+async function godotCreateAutoload(args) {
+  requireString(args.name, "name");
+  requireString(args.script_path, "script_path");
+  if (!isGodotIdentifier(args.name)) {
+    throw new Error("name must be a valid Godot identifier.");
+  }
+  const scriptAbs = await resolveProjectPath(args.script_path, { mustExist: true });
+  assertExtension(scriptAbs, ".gd");
+  const projectFile = path.join(projectRoot, "project.godot");
+  const text = await readTextFile(projectFile, MAX_TEXT_BYTES);
+  const marker = args.singleton === false ? "" : "*";
+  const value = godotString(`${marker}${toResPath(scriptAbs)}`);
+  const updated = setProjectSetting(text, "autoload", args.name, value, Boolean(args.overwrite));
+  await fs.writeFile(projectFile, updated.text, "utf8");
+  return {
+    ok: true,
+    projectFile: "res://project.godot",
+    name: args.name,
+    script: toResPath(scriptAbs),
+    singleton: args.singleton !== false,
+    operation: updated.operation
+  };
+}
+
+async function godotCreateMaterial(args) {
+  requireString(args.path, "path");
+  const abs = await resolveProjectPath(args.path, { forWrite: true });
+  assertTextMaterialExtension(abs, "path");
+  await assertCanWrite(abs, Boolean(args.overwrite));
+  const materialType = args.material_type ?? "StandardMaterial3D";
+  if (!["StandardMaterial3D", "CanvasItemMaterial"].includes(materialType)) {
+    throw new Error("material_type must be StandardMaterial3D or CanvasItemMaterial.");
+  }
+  const color = formatColor(args.albedo_color ?? [1, 1, 1, 1]);
+  const lines = [
+    `[gd_resource type="${materialType}" format=3]`,
+    "",
+    "[resource]"
+  ];
+  if (materialType === "StandardMaterial3D") {
+    lines.push(
+      `albedo_color = ${color}`,
+      `roughness = ${formatNumber(clampNumber(args.roughness ?? 0.5, 0, 1))}`,
+      `metallic = ${formatNumber(clampNumber(args.metallic ?? 0, 0, 1))}`
+    );
+  } else {
+    lines.push(`color = ${color}`);
+  }
+  lines.push("");
+  await fs.mkdir(path.dirname(abs), { recursive: true });
+  await fs.writeFile(abs, lines.join("\n"), "utf8");
+  return { ok: true, path: toResPath(abs), materialType, created: true, overwritten: Boolean(args.overwrite) };
 }
 
 async function godotImportImage(args) {
@@ -621,6 +960,67 @@ async function godotGenerate3dModel(args) {
     options: { name },
     env
   });
+}
+
+async function godotListGenerationJobs(args) {
+  const root = path.join(projectRoot, "generation_jobs");
+  if (!(await pathExists(root))) {
+    return { ok: true, jobs: [], count: 0 };
+  }
+  const kind = args.kind ?? "all";
+  const status = args.status ? String(args.status) : "";
+  const maxJobs = clampInteger(args.max_jobs ?? 100, 1, 1000);
+  const files = await walk(root, { maxFiles: 30000 });
+  const jobs = [];
+
+  for (const rel of files.filter((file) => file.endsWith(".json"))) {
+    if (jobs.length >= maxJobs) {
+      break;
+    }
+    const parts = rel.split("/");
+    const jobKind = parts[0] === "generation_jobs" ? parts[1] : "";
+    if (kind !== "all" && jobKind !== kind) {
+      continue;
+    }
+    const abs = path.join(projectRoot, fromProjectSeparators(rel));
+    try {
+      const job = JSON.parse(await readTextFile(abs, MAX_TEXT_BYTES));
+      if (status && job.status !== status) {
+        continue;
+      }
+      jobs.push({
+        path: toResPath(abs),
+        id: job.id ?? null,
+        kind: job.kind ?? jobKind,
+        provider: job.provider ?? null,
+        status: job.status ?? null,
+        targetPath: job.targetPath ?? null,
+        createdAt: job.createdAt ?? null,
+        updatedAt: job.updatedAt ?? null,
+        promptPreview: typeof job.prompt === "string" ? job.prompt.slice(0, 160) : ""
+      });
+    } catch (error) {
+      jobs.push({ path: toResPath(abs), error: sanitizeForLog(error.message ?? error, env) });
+    }
+  }
+
+  jobs.sort((a, b) => String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? "")));
+  return { ok: true, count: jobs.length, jobs };
+}
+
+async function godotUpdateGenerationJobStatus(args) {
+  requireString(args.status, "status");
+  const abs = args.job_path
+    ? await resolveGenerationJobPath(args.job_path)
+    : await findGenerationJobById(args.id);
+  const job = JSON.parse(await readTextFile(abs, MAX_TEXT_BYTES));
+  job.status = args.status;
+  job.updatedAt = new Date().toISOString();
+  if (args.note != null) {
+    job.note = String(args.note).slice(0, 1000);
+  }
+  await fs.writeFile(abs, `${JSON.stringify(job, null, 2)}\n`, "utf8");
+  return { ok: true, path: toResPath(abs), id: job.id ?? null, status: job.status, updatedAt: job.updatedAt };
 }
 
 async function godotRunProject(args) {
@@ -784,21 +1184,22 @@ function groupToolsByCategory() {
 }
 
 function toolCategory(name) {
-  if (name === "godot_help") return "discovery";
+  if (name === "godot_help" || name === "godot_doctor" || name === "godot_codex_config") return "discovery";
   if (name.includes("bridge")) return "bridge";
   if (name.includes("runtime") || name.includes("run") || name.includes("stop") || name.includes("screenshot") || name.includes("viewport")) return "runtime";
-  if (name.includes("scan") || name.includes("list") || name.includes("read") || name.includes("check")) return "inspect";
-  if (name.includes("scene") || name.includes("node") || name.includes("script")) return "edit";
-  if (name.includes("image") || name.includes("texture") || name.includes("model") || name.includes("sprite")) return "assets";
+  if (name.includes("scan") || name.includes("list") || name.includes("read") || name.includes("check") || name.includes("search")) return "inspect";
+  if (name.includes("scene") || name.includes("node") || name.includes("script") || name.includes("input") || name.includes("autoload")) return "edit";
+  if (name.includes("image") || name.includes("texture") || name.includes("model") || name.includes("sprite") || name.includes("material") || name.includes("generation_job")) return "assets";
   return "misc";
 }
 
 function workflowHelp() {
   return {
-    inspectProject: ["godot_project_scan", "godot_list_scenes", "godot_check_errors"],
-    createSimpleScene: ["godot_create_script", "godot_create_scene", "godot_attach_script", "godot_add_node", "godot_read_scene", "godot_check_errors"],
+    inspectProject: ["godot_doctor", "godot_project_scan", "godot_list_scenes", "godot_list_scripts", "godot_check_errors"],
+    createSimpleScene: ["godot_create_script/dry_run:true", "godot_create_scene/dry_run:true", "godot_create_script", "godot_create_scene", "godot_attach_script", "godot_add_node", "godot_read_scene", "godot_check_errors"],
     importSprite: ["godot_import_image", "godot_add_node", "godot_update_node", "godot_check_errors"],
     generationSafeMode: ["godot_generate_sprite/provider:none", "godot_generate_texture/provider:none", "godot_generate_3d_model/provider:none"],
+    reviewGenerationJobs: ["godot_list_generation_jobs", "godot_update_generation_job_status"],
     runtimeLoop: ["godot_run_project/dry_run:false", "godot_runtime_status", "godot_capture_screenshot", "godot_stop_project"],
     editorBridgeLoop: ["enable addons/ai_mcp_bridge", "godot_bridge_status", "godot_editor_scene_snapshot", "godot_run_project/mode:editor", "godot_stop_project/mode:editor"]
   };
@@ -806,7 +1207,7 @@ function workflowHelp() {
 
 function coverageHelp() {
   return {
-    strong: ["project scan", "scene list/read for .tscn", "safe .tscn create/add/update", "GDScript creation", "project-local image/model import", "provider job queue", "static validation", "tracked CLI run/stop", "PNG game screenshots through Godot Movie Maker"],
+    strong: ["project doctor", "Codex config generation", "project scan/search", "scene/script list/read for .tscn/.gd", "safe .tscn create/add/update with dry_run", "GDScript creation", "input action/autoload/material creation", "project-local image/model import", "provider job queue and status updates", "static validation", "tracked CLI run/stop", "PNG game screenshots through Godot Movie Maker"],
     partial: ["Godot CLI run/check/screenshot, depends on Godot executable availability", "Editor bridge play/stop/snapshot, depends on plugin enabled in the editor", "OpenAI/custom_http image generation, depends on .env credentials and network approval"],
     intentionallyLimited: ["binary .scn editing", "arbitrary shell commands", "delete node/file operations", "full UndoRedo integration from MCP"],
     futureCandidates: ["runtime autoload for input simulation and live runtime tree inspection", "LSP/DAP integration", "ClassDB introspection", "paged tool profiles for small-context clients"]
@@ -845,19 +1246,28 @@ function bridgeHelp() {
 
 function usageTemplate(name) {
   const templates = {
+    godot_doctor: { timeout_ms: 1000 },
+    godot_codex_config: { server_name: "godotMCP", startup_timeout_sec: 20 },
     godot_project_scan: { max_files: 8000, max_depth: 6 },
+    godot_search_project: { query: "Player", folder: "", extensions: [".gd", ".tscn"], max_results: 20 },
     godot_list_scenes: { folder: "" },
+    godot_list_scripts: { folder: "scripts", include_text: false },
     godot_read_scene: { path: "scenes/example.tscn", include_text: false },
-    godot_create_scene: { path: "scenes/example.tscn", root_type: "Node2D", root_name: "Example", overwrite: false },
-    godot_add_node: { scene_path: "scenes/example.tscn", parent_path: ".", node_type: "Sprite2D", node_name: "Sprite", properties: { position: [0, 0] } },
-    godot_update_node: { scene_path: "scenes/example.tscn", node_path: "Sprite", properties: { visible: true } },
-    godot_attach_script: { scene_path: "scenes/example.tscn", node_path: ".", script_path: "scripts/example.gd", extends: "Node2D" },
-    godot_create_script: { path: "scripts/example.gd", extends: "Node2D", description: "Example script" },
+    godot_create_scene: { path: "scenes/example.tscn", root_type: "Node2D", root_name: "Example", overwrite: false, dry_run: true },
+    godot_add_node: { scene_path: "scenes/example.tscn", parent_path: ".", node_type: "Sprite2D", node_name: "Sprite", properties: { position: [0, 0] }, dry_run: true },
+    godot_update_node: { scene_path: "scenes/example.tscn", node_path: "Sprite", properties: { visible: true }, dry_run: true },
+    godot_attach_script: { scene_path: "scenes/example.tscn", node_path: ".", script_path: "scripts/example.gd", extends: "Node2D", dry_run: true },
+    godot_create_script: { path: "scripts/example.gd", extends: "Node2D", description: "Example script", dry_run: true },
+    godot_create_input_action: { action: "jump", events: [{ type: "key", keycode: 32 }] },
+    godot_create_autoload: { name: "GameState", script_path: "scripts/game_state.gd", singleton: true },
+    godot_create_material: { path: "assets/materials/example.tres", material_type: "StandardMaterial3D", albedo_color: [1, 1, 1, 1] },
     godot_import_image: { source_path: "icon.svg", target_path: "assets/generated/sprites/icon.svg", kind: "sprite" },
     godot_generate_sprite: { provider: "none", prompt: "small friendly slime sprite", target_path: "assets/generated/sprites/slime.png" },
     godot_generate_texture: { provider: "none", prompt: "tileable stone floor", seamless: true, target_path: "assets/generated/textures/stone.png" },
     godot_import_3d_model: { source_path: "assets/source/models/prop.glb", target_path: "assets/models/prop.glb" },
     godot_generate_3d_model: { provider: "none", prompt: "low poly treasure chest", target_path: "assets/generated/models/chest.glb" },
+    godot_list_generation_jobs: { kind: "all", max_jobs: 50 },
+    godot_update_generation_job_status: { job_path: "generation_jobs/images/example.json", status: "done", note: "Imported manually." },
     godot_run_project: { mode: "cli", dry_run: true },
     godot_runtime_status: { include_bridge: true, timeout_ms: 1000 },
     godot_stop_project: { mode: "auto", timeout_ms: 3000 },
@@ -874,13 +1284,16 @@ function usageTemplate(name) {
 function suggestToolChain(task) {
   const text = String(task).toLowerCase();
   if (text.includes("sprite") || text.includes("texture") || text.includes("image")) {
-    return ["godot_help/tool:godot_generate_sprite", "godot_generate_sprite", "godot_import_image", "godot_check_errors"];
+    return ["godot_doctor", "godot_help/tool:godot_generate_sprite", "godot_generate_sprite", "godot_list_generation_jobs", "godot_import_image", "godot_check_errors"];
   }
   if (text.includes("3d") || text.includes("model") || text.includes("mesh")) {
-    return ["godot_help/tool:godot_import_3d_model", "godot_generate_3d_model", "godot_import_3d_model", "godot_check_errors"];
+    return ["godot_doctor", "godot_help/tool:godot_import_3d_model", "godot_generate_3d_model", "godot_list_generation_jobs", "godot_import_3d_model", "godot_check_errors"];
   }
   if (text.includes("scene") || text.includes("node")) {
-    return ["godot_project_scan", "godot_create_script", "godot_create_scene", "godot_add_node", "godot_read_scene", "godot_check_errors"];
+    return ["godot_project_scan", "godot_create_script/dry_run:true", "godot_create_scene/dry_run:true", "godot_create_script", "godot_create_scene", "godot_add_node", "godot_read_scene", "godot_check_errors"];
+  }
+  if (text.includes("input") || text.includes("autoload") || text.includes("material")) {
+    return ["godot_doctor", "godot_project_scan", "godot_create_input_action or godot_create_autoload or godot_create_material", "godot_check_errors"];
   }
   if (text.includes("screenshot") || text.includes("capture")) {
     return ["godot_check_errors", "godot_run_project/dry_run:true", "godot_capture_screenshot", "godot_runtime_status"];
@@ -888,7 +1301,7 @@ function suggestToolChain(task) {
   if (text.includes("debug") || text.includes("run") || text.includes("play") || text.includes("stop")) {
     return ["godot_check_errors", "godot_run_project/dry_run:true", "godot_runtime_status", "godot_stop_project"];
   }
-  return ["godot_project_scan", "godot_help/category:workflows", "godot_check_errors"];
+  return ["godot_doctor", "godot_project_scan", "godot_help/category:workflows", "godot_check_errors"];
 }
 
 function callEditorBridge(request, timeoutMs) {
@@ -958,6 +1371,157 @@ function buildScriptContent(args) {
   }
   lines.push("", "func _ready() -> void:", "    # This runs once when the node enters the scene tree.", "    pass", "");
   return lines.join("\n");
+}
+
+function plannedResult(plannedChanges, extra = {}) {
+  return { ok: true, dryRun: true, ...extra, plannedChanges };
+}
+
+function parseScriptInfo(text) {
+  return {
+    extends: matchValue(text, /^\s*extends\s+([A-Za-z_][A-Za-z0-9_]*)/m),
+    className: matchValue(text, /^\s*class_name\s+([A-Za-z_][A-Za-z0-9_]*)/m)
+  };
+}
+
+function normalizeExtensionFilter(values) {
+  const result = new Set();
+  if (!Array.isArray(values)) {
+    return result;
+  }
+  for (const value of values) {
+    if (typeof value !== "string" || value.trim() === "") {
+      continue;
+    }
+    const ext = value.startsWith(".") ? value.toLowerCase() : `.${value.toLowerCase()}`;
+    if (/^\.[a-z0-9_+-]+$/.test(ext)) {
+      result.add(ext);
+    }
+  }
+  return result;
+}
+
+function isDefaultSearchExtension(ext, rel) {
+  return new Set([".gd", ".tscn", ".tres", ".material", ".md", ".json", ".cfg", ".godot", ".toml", ".mjs", ".js"]).has(ext)
+    || rel.endsWith(".env.example");
+}
+
+function serializeInputEvent(event) {
+  if (event == null || typeof event !== "object" || Array.isArray(event)) {
+    throw new Error("Each input event must be an object.");
+  }
+  const type = event.type ?? "key";
+  if (type === "key") {
+    const keycode = clampInteger(event.keycode ?? event.physical_keycode ?? 0, 0, 8388607);
+    const physical = clampInteger(event.physical_keycode ?? 0, 0, 8388607);
+    return [
+      'Object(InputEventKey',
+      '"resource_local_to_scene":false',
+      '"resource_name":""',
+      '"device":-1',
+      '"window_id":0',
+      `"alt_pressed":${Boolean(event.alt_pressed)}`,
+      `"shift_pressed":${Boolean(event.shift_pressed)}`,
+      `"ctrl_pressed":${Boolean(event.ctrl_pressed)}`,
+      `"meta_pressed":${Boolean(event.meta_pressed)}`,
+      '"pressed":false',
+      `"keycode":${keycode}`,
+      `"physical_keycode":${physical}`,
+      '"key_label":0',
+      '"unicode":0',
+      '"location":0',
+      '"echo":false',
+      '"script":null)'
+    ].join(",");
+  }
+  if (type === "mouse_button" || type === "joy_button") {
+    const className = type === "mouse_button" ? "InputEventMouseButton" : "InputEventJoypadButton";
+    const buttonIndex = clampInteger(event.button_index ?? 0, 0, 255);
+    return `Object(${className},"resource_local_to_scene":false,"resource_name":"","device":-1,"button_index":${buttonIndex},"pressed":false,"script":null)`;
+  }
+  throw new Error("input event type must be key, mouse_button, or joy_button.");
+}
+
+function setProjectSetting(text, section, key, value, overwrite) {
+  const lines = textToLines(text);
+  const bounds = findSectionBounds(lines, section);
+  const entry = `${key}=${value}`;
+  if (!bounds) {
+    if (lines.at(-1) !== "") {
+      lines.push("");
+    }
+    lines.push(`[${section}]`, "", entry, "");
+    return { text: lines.join("\n"), operation: "created_section_and_entry" };
+  }
+
+  for (let index = bounds.start + 1; index < bounds.end; index += 1) {
+    if (lines[index].startsWith(`${key}=`)) {
+      if (!overwrite) {
+        throw new Error(`${section}.${key} already exists; pass overwrite: true to replace it.`);
+      }
+      lines[index] = entry;
+      return { text: lines.join("\n"), operation: "updated_entry" };
+    }
+  }
+
+  lines.splice(bounds.end, 0, entry);
+  return { text: lines.join("\n"), operation: "created_entry" };
+}
+
+function findSectionBounds(lines, section) {
+  const start = lines.findIndex((line) => line.trim() === `[${section}]`);
+  if (start === -1) {
+    return null;
+  }
+  let end = lines.length;
+  for (let index = start + 1; index < lines.length; index += 1) {
+    if (/^\[[^\]]+\]\s*$/.test(lines[index])) {
+      end = index;
+      break;
+    }
+  }
+  return { start, end };
+}
+
+function formatColor(value) {
+  if (!Array.isArray(value) || (value.length !== 3 && value.length !== 4)) {
+    throw new Error("albedo_color must be [r, g, b] or [r, g, b, a].");
+  }
+  const parts = [...value, ...(value.length === 3 ? [1] : [])].map((part) => formatNumber(clampNumber(part, 0, 1)));
+  return `Color(${parts.join(", ")})`;
+}
+
+function providerStatus(values) {
+  const image = values.IMAGE_PROVIDER ?? "none";
+  const model3d = values.MODEL_3D_PROVIDER ?? "none";
+  const chat = values.AI_CHAT_PROVIDER ?? "none";
+  return {
+    image: providerDetails(image, {
+      openai: ["OPENAI_API_KEY"],
+      polza_ai: ["POLZA_AI_IMAGE_URL", "POLZA_AI_API_KEY"],
+      local_comfyui: ["LOCAL_COMFYUI_URL"],
+      custom_http: ["CUSTOM_IMAGE_HTTP_URL"]
+    }, values),
+    model3d: providerDetails(model3d, {
+      tripo: ["TRIPO_API_KEY"],
+      meshy: ["MESHY_API_KEY"],
+      custom_http: ["CUSTOM_MODEL_HTTP_URL"]
+    }, values),
+    chat: providerDetails(chat, {
+      openai_compatible: ["AI_CHAT_BASE_URL", "AI_CHAT_MODEL"]
+    }, values)
+  };
+}
+
+function providerDetails(provider, requirements, values) {
+  const required = requirements[provider] ?? [];
+  const missing = required.filter((name) => !values[name]);
+  return {
+    provider,
+    configured: provider !== "none" && missing.length === 0,
+    missing,
+    safeDefault: provider === "none"
+  };
 }
 
 async function prepareProperties(properties, scene) {
@@ -1622,6 +2186,24 @@ async function assertCanWrite(abs, overwrite) {
   }
 }
 
+async function pathExists(abs) {
+  try {
+    await fs.access(abs, fsConstants.F_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function folderStatus(abs) {
+  try {
+    const stat = await fs.stat(abs);
+    return { exists: true, isDirectory: stat.isDirectory(), path: toResPath(abs) };
+  } catch {
+    return { exists: false, isDirectory: false, path: toResPath(abs) };
+  }
+}
+
 async function readTextFile(abs, maxBytes) {
   const stat = await fs.stat(abs);
   if (stat.size > maxBytes) {
@@ -1748,6 +2330,13 @@ function assertModelExtension(abs, name) {
   }
 }
 
+function assertTextMaterialExtension(abs, name) {
+  const ext = path.extname(abs).toLowerCase();
+  if (ext !== ".tres" && ext !== ".material") {
+    throw new Error(`${name} must use .tres or .material for text material resources.`);
+  }
+}
+
 function assertScreenshotExtension(abs, name) {
   if (!SCREENSHOT_EXTENSIONS.has(path.extname(abs).toLowerCase())) {
     throw new Error(`${name} must use one of: ${[...SCREENSHOT_EXTENSIONS].join(", ")}.`);
@@ -1778,8 +2367,54 @@ function formatNumber(value) {
   return String(number);
 }
 
+function clampNumber(value, min, max) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    throw new Error(`expected a number between ${min} and ${max}.`);
+  }
+  return Math.max(min, Math.min(max, number));
+}
+
 function godotString(value) {
   return JSON.stringify(value);
+}
+
+function tomlString(value) {
+  return JSON.stringify(String(value));
+}
+
+async function resolveGenerationJobPath(input) {
+  requireString(input, "job_path");
+  const abs = await resolveProjectPath(input, { mustExist: true });
+  assertGenerationJobInside(abs);
+  assertExtension(abs, ".json");
+  return abs;
+}
+
+function assertGenerationJobInside(abs) {
+  const relative = path.relative(path.join(projectRoot, "generation_jobs"), path.resolve(abs));
+  if (relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative))) {
+    return;
+  }
+  throw new Error("job_path must be inside generation_jobs/.");
+}
+
+async function findGenerationJobById(id) {
+  requireString(id, "id");
+  const root = path.join(projectRoot, "generation_jobs");
+  const files = await walk(root, { maxFiles: 30000 });
+  for (const rel of files.filter((file) => file.endsWith(".json"))) {
+    const abs = path.join(projectRoot, fromProjectSeparators(rel));
+    try {
+      const job = JSON.parse(await readTextFile(abs, MAX_TEXT_BYTES));
+      if (job.id === id) {
+        return abs;
+      }
+    } catch {
+      continue;
+    }
+  }
+  throw new Error(`generation job not found for id: ${id}`);
 }
 
 function toProjectPath(abs) {

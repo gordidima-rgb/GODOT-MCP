@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  mcp-godot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Check MCP server syntax
+        run: node --check tools/mcp-godot/src/server.mjs
+
+      - name: Check providers syntax
+        run: node --check tools/mcp-godot/src/providers.mjs
+
+      - name: Run MCP smoke test
+        run: node tools/mcp-godot/test/smoke.mjs
+
+      - name: Check version consistency
+        run: node tools/mcp-godot/test/version-check.mjs

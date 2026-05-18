@@ -56,16 +56,20 @@ Set `GODOT_MCP_READ_ONLY=true` to expose the same tool list while blocking write
 From the project root:
 
 ```powershell
-& 'C:\Users\gdima\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe' '.\tools\mcp-godot\test\smoke.mjs'
+node .\tools\mcp-godot\test\smoke.mjs
 ```
 
 ## Codex Config
 
-Review `tools/mcp-godot/mcp-config.example.toml`, then copy the entries into:
+Run `tools/install-godot-mcp.ps1` or review `tools/mcp-godot/mcp-config.example.toml`, then copy the entries into your Codex config.
+
+On Windows, the config is usually:
 
 ```text
-C:\Users\gdima\.codex\config.toml
+%USERPROFILE%\.codex\config.toml
 ```
+
+Replace `<PROJECT_ROOT>` in examples with the folder that contains `project.godot`.
 
 Restart Codex after editing MCP config so the new servers can load.
 

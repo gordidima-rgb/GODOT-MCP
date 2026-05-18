@@ -6,4 +6,7 @@
 .import/
 
 tools/mcp-godot/.tmp-*/
+tools/.tmp-*/
 generation_jobs/**/*.tmp
+godot-mcp.codex.toml
+project.godot.godot-mcp-backup-*

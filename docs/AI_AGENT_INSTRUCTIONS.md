@@ -2,7 +2,7 @@
 
 Selected client: Codex
 
-Project root: `C:/Users/gdima/Documents/learn-personal`
+Project root: the folder that contains `project.godot`.
 
 Work with this Godot 4.x project through the safe MCP tools.
 First inspect the project, list scenes and scripts, then make small scoped changes.

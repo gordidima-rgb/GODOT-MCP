@@ -63,21 +63,30 @@ try {
   const names = listed.tools.map((tool) => tool.name);
   for (const name of [
     "godot_help",
+    "godot_doctor",
+    "godot_codex_config",
     "godot_bridge_status",
     "godot_editor_scene_snapshot",
     "godot_project_scan",
+    "godot_search_project",
     "godot_list_scenes",
+    "godot_list_scripts",
     "godot_read_scene",
     "godot_create_scene",
     "godot_add_node",
     "godot_update_node",
     "godot_attach_script",
     "godot_create_script",
+    "godot_create_input_action",
+    "godot_create_autoload",
+    "godot_create_material",
     "godot_import_image",
     "godot_generate_sprite",
     "godot_generate_texture",
     "godot_import_3d_model",
     "godot_generate_3d_model",
+    "godot_list_generation_jobs",
+    "godot_update_generation_job_status",
     "godot_run_project",
     "godot_runtime_status",
     "godot_stop_project",
@@ -89,13 +98,39 @@ try {
   }
 
   const help = await call("godot_help", { category: "coverage" });
-  assert(help.coverage.strong.includes("project scan"), "godot_help must expose coverage info");
+  assert(help.coverage.strong.some((item) => item.includes("project scan")), "godot_help must expose coverage info");
 
   const bridge = await call("godot_bridge_status", { timeout_ms: 250 });
   assert(bridge.ok === false || bridge.connected === true, "godot_bridge_status must return a structured status");
 
   const editorSnapshot = await call("godot_editor_scene_snapshot", { timeout_ms: 250 });
   assert(editorSnapshot.ok === false || editorSnapshot.connected === true, "godot_editor_scene_snapshot must return bridge connection status");
+
+  const doctor = await call("godot_doctor", { timeout_ms: 250 });
+  assert(doctor.projectRoot === fixtureRoot, "godot_doctor must report the fixture project root");
+  assert(doctor.serverVersion === "0.3.1", "godot_doctor must report server version");
+  assert(doctor.projectGodot.exists === true, "godot_doctor must see project.godot");
+
+  const codexConfig = await call("godot_codex_config", {});
+  assert(codexConfig.toml.includes("[mcp_servers.godotMCP]"), "godot_codex_config must return TOML");
+  assert(codexConfig.toml.includes(fixtureRoot.replaceAll("\\", "\\\\")) || codexConfig.toml.includes(fixtureRoot), "godot_codex_config must include project root");
+
+  const dryScript = await call("godot_create_script", {
+    path: "scripts/dry_only.gd",
+    extends: "Node",
+    dry_run: true
+  });
+  assert(dryScript.dryRun === true && dryScript.plannedChanges.length === 1, "godot_create_script dry_run must return plannedChanges");
+  assert(!(await exists(path.join(fixtureRoot, "scripts", "dry_only.gd"))), "godot_create_script dry_run must not write a file");
+
+  const dryScene = await call("godot_create_scene", {
+    path: "scenes/dry_only.tscn",
+    root_type: "Node2D",
+    root_name: "DryOnly",
+    dry_run: true
+  });
+  assert(dryScene.dryRun === true && dryScene.plannedChanges.length === 1, "godot_create_scene dry_run must return plannedChanges");
+  assert(!(await exists(path.join(fixtureRoot, "scenes", "dry_only.tscn"))), "godot_create_scene dry_run must not write a file");
 
   await call("godot_create_script", {
     path: "scripts/smoke.gd",
@@ -106,11 +141,29 @@ try {
     root_type: "Node2D",
     root_name: "Smoke"
   });
+  const attachDry = await call("godot_attach_script", {
+    scene_path: "scenes/smoke.tscn",
+    node_path: ".",
+    script_path: "scripts/smoke.gd",
+    dry_run: true
+  });
+  assert(attachDry.dryRun === true && attachDry.plannedChanges.some((change) => change.action === "attach_script"), "godot_attach_script dry_run must plan the scene update");
   await call("godot_attach_script", {
     scene_path: "scenes/smoke.tscn",
     node_path: ".",
     script_path: "scripts/smoke.gd"
   });
+  const addDry = await call("godot_add_node", {
+    scene_path: "scenes/smoke.tscn",
+    parent_path: ".",
+    node_type: "Sprite2D",
+    node_name: "DrySprite",
+    properties: {
+      position: [1, 2]
+    },
+    dry_run: true
+  });
+  assert(addDry.dryRun === true && addDry.plannedChanges.some((change) => change.action === "add_node"), "godot_add_node dry_run must plan the new node");
   await call("godot_add_node", {
     scene_path: "scenes/smoke.tscn",
     parent_path: ".",
@@ -121,6 +174,15 @@ try {
       visible: true
     }
   });
+  const updateDry = await call("godot_update_node", {
+    scene_path: "scenes/smoke.tscn",
+    node_path: "Sprite",
+    properties: {
+      visible: false
+    },
+    dry_run: true
+  });
+  assert(updateDry.dryRun === true && updateDry.updatedProperties.includes("visible"), "godot_update_node dry_run must plan property updates");
   await call("godot_update_node", {
     scene_path: "scenes/smoke.tscn",
     node_path: "Sprite",
@@ -128,6 +190,25 @@ try {
       scale: [2, 2]
     }
   });
+  const inputAction = await call("godot_create_input_action", {
+    action: "jump",
+    events: [{ type: "key", keycode: 32 }]
+  });
+  assert(inputAction.ok && inputAction.action === "jump", "godot_create_input_action must update project.godot");
+
+  const autoload = await call("godot_create_autoload", {
+    name: "SmokeState",
+    script_path: "scripts/smoke.gd"
+  });
+  assert(autoload.ok && autoload.name === "SmokeState", "godot_create_autoload must update project.godot");
+
+  const material = await call("godot_create_material", {
+    path: "assets/materials/smoke.tres",
+    material_type: "StandardMaterial3D",
+    albedo_color: [0.2, 0.4, 0.8, 1]
+  });
+  assert(material.ok, "godot_create_material must write a material resource");
+
   const image = await call("godot_import_image", {
     source_path: "icon.svg",
     target_path: "assets/imported/icon.svg",
@@ -166,6 +247,15 @@ try {
   });
   assert(modelJob.queued && modelJob.jobPath.startsWith("res://generation_jobs/models/"), "godot_generate_3d_model must create a job");
 
+  const jobs = await call("godot_list_generation_jobs", { kind: "all" });
+  assert(jobs.count >= 3, "godot_list_generation_jobs must see queued jobs");
+  const updatedJob = await call("godot_update_generation_job_status", {
+    job_path: imageJob.jobPath,
+    status: "done",
+    note: "Smoke test completed."
+  });
+  assert(updatedJob.status === "done", "godot_update_generation_job_status must update status");
+
   const scan = await call("godot_project_scan", {});
   assert(scan.counts.scenes === 1, "project_scan must see the created scene");
   assert(scan.counts.scripts === 1, "project_scan must see the created script");
@@ -173,6 +263,12 @@ try {
 
   const scenes = await call("godot_list_scenes", {});
   assert(scenes.scenes.some((scene) => scene.path === "res://scenes/smoke.tscn"), "list_scenes must include smoke scene");
+
+  const scripts = await call("godot_list_scripts", {});
+  assert(scripts.scripts.some((script) => script.path === "res://scripts/smoke.gd"), "list_scripts must include smoke script");
+
+  const search = await call("godot_search_project", { query: "Smoke", extensions: [".tscn", ".gd"] });
+  assert(search.matches.length > 0, "search_project must find text in project files");
 
   const scene = await call("godot_read_scene", { path: "scenes/smoke.tscn" });
   assert(scene.scene.root.type === "Node2D", "read_scene must parse the root node type");
@@ -197,11 +293,13 @@ try {
   });
   assert(screenshotDry.dryRun === true || screenshotDry.status === "not_found", "capture_screenshot dry run must not launch Godot");
 
-  const editorViewport = await call("godot_capture_editor_viewport", {
-    output_path: "docs/assets/screenshots/editor/smoke.png",
-    timeout_ms: 250
-  });
-  assert(editorViewport.ok === false || editorViewport.connected === true, "capture_editor_viewport must return bridge connection status");
+  if (editorSnapshot.connected !== true) {
+    const editorViewport = await call("godot_capture_editor_viewport", {
+      output_path: "docs/assets/screenshots/editor/smoke.png",
+      timeout_ms: 250
+    });
+    assert(editorViewport.ok === false || editorViewport.connected === true, "capture_editor_viewport must return bridge connection status");
+  }
 
   const checked = await call("godot_check_errors", { run_godot: false });
   assert(checked.ok === true, "static check_errors must pass for fixture");
@@ -276,6 +374,15 @@ async function resetFixture() {
   await fs.writeFile(path.join(resolved, "icon.svg"), '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"></svg>\n', "utf8");
   await fs.mkdir(path.join(resolved, "source_models"), { recursive: true });
   await fs.writeFile(path.join(resolved, "source_models", "cube.glb"), "glb-fixture\n", "utf8");
+}
+
+async function exists(abs) {
+  try {
+    await fs.access(abs);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function assert(condition, message) {

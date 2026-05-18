@@ -9,6 +9,22 @@ This project has a local Godot MCP server in `tools/mcp-godot/`. It is designed 
 - The asset folder currently exists on disk as `Assets/` because Windows paths are case-insensitive. The MCP tools accept `assets/...` paths, but do not rename folders automatically.
 - Existing safe structure includes `addons/`, `tools/mcp-godot/`, `generation_jobs/`, `docs/`, and generated asset folders.
 
+## Install In One Command On Windows
+
+Open PowerShell in the folder that contains your `project.godot`, then run:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$s=Join-Path $env:TEMP 'install-godot-mcp.ps1'; Invoke-WebRequest 'https://raw.githubusercontent.com/gordidima-rgb/GODOT-MCP/main/tools/install-godot-mcp.ps1' -OutFile $s; & $s -ProjectPath (Get-Location)"
+```
+
+The installer copies:
+
+- `addons/ai_mcp_bridge/`
+- `tools/mcp-godot/`
+- `.env.example`, if your project does not have one yet
+
+It also enables the editor plugin in `project.godot`, saves a `project.godot.godot-mcp-backup-*` backup, runs the MCP smoke test when Node.js is available, and writes `godot-mcp.codex.toml` with the correct paths for your computer.
+
 ## MCP Servers
 
 Context7 MCP is expected in Codex config as:
@@ -20,10 +36,16 @@ codex mcp add context7 -- npx -y @upstash/context7-mcp
 The local Godot MCP server runs with Node.js over stdio:
 
 ```powershell
-& 'C:\Users\gdima\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe' 'C:\Users\gdima\Documents\learn-personal\tools\mcp-godot\src\server.mjs' --project-root 'C:\Users\gdima\Documents\learn-personal'
+node .\tools\mcp-godot\src\server.mjs --project-root .
 ```
 
-Restart Codex after changing `C:\Users\gdima\.codex\config.toml`.
+For Codex, copy the `[mcp_servers.godotMCP]` block from `godot-mcp.codex.toml` into your Codex config. On Windows, that config is usually:
+
+```powershell
+$env:USERPROFILE\.codex\config.toml
+```
+
+Restart Codex after changing the config.
 
 ## Add Godot To PATH
 
@@ -35,12 +57,13 @@ godot --version
 
 If that command is not found on Windows, add the folder that contains `Godot_v4.x-stable_win64.exe` to the user `PATH`, then restart Codex, Godot, and your terminal.
 
-Example for a downloaded Godot executable in `C:\Users\gdima\Downloads`:
+Example for a downloaded Godot executable in `C:\Path\To\Godot`:
 
 ```powershell
+$godotFolder = "C:\Path\To\Godot"
 [Environment]::SetEnvironmentVariable(
   "Path",
-  [Environment]::GetEnvironmentVariable("Path", "User") + ";C:\Users\gdima\Downloads",
+  [Environment]::GetEnvironmentVariable("Path", "User") + ";$godotFolder",
   "User"
 )
 ```
@@ -48,7 +71,7 @@ Example for a downloaded Godot executable in `C:\Users\gdima\Downloads`:
 Then either rename/copy the executable so it can be called as `godot`, or set `.env` explicitly:
 
 ```text
-GODOT_CLI=C:\Users\gdima\Downloads\Godot_v4.6.2-stable_win64.exe
+GODOT_CLI=C:\Path\To\Godot\Godot_v4.x-stable_win64.exe
 ```
 
 After this, `godot_check_errors` can run a real headless editor check and `godot_run_project` can launch scenes. Without it, the MCP server falls back to static validation only.
@@ -128,7 +151,7 @@ Set `AI_CHAT_PROVIDER=openai_compatible` to call a local or remote OpenAI-compat
 ## Run The Smoke Test
 
 ```powershell
-& 'C:\Users\gdima\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe' '.\tools\mcp-godot\test\smoke.mjs'
+node .\tools\mcp-godot\test\smoke.mjs
 ```
 
 Expected result:
