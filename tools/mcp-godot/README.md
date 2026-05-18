@@ -13,7 +13,7 @@ This is a local stdio MCP server for the current Godot 4 project. It works witho
 - Install Jeh3no PlayerCharacter and create third-person character prototype scenes without capsule placeholders.
 - Install Jeh3no advanced first-person PlayerCharacter and create FPS prototype scenes without capsule placeholders.
 - Import project-local images and 3D models.
-- Generate or queue sprite/texture/model jobs through provider interfaces.
+- Generate or queue sprite/texture/model jobs through provider interfaces, including Meshy, Tripo, and custom HTTP 3D model providers.
 - Run, stop, and check the project with Godot CLI when available.
 - Capture PNG game screenshots through Godot Movie Maker.
 - Ask the editor bridge what is open in the current scene.
@@ -59,6 +59,18 @@ godot_bridge_status
 ```
 
 Set `GODOT_MCP_READ_ONLY=true` to expose the same tool list while blocking write/run/generation tools at execution time.
+
+## 3D Model Providers
+
+Keep real keys in `.env`, or set them from the `AI MCP Bridge` dock:
+
+```text
+MODEL_3D_PROVIDER=meshy
+MESHY_API_KEY=your_key_here
+MESHY_QUALITY=preview
+```
+
+Supported 3D provider names are `none`, `meshy`, `tripo`, and `custom_http`. `none` writes a JSON job only. `meshy` and `tripo` call their text-to-3D APIs, download a GLB into `assets/generated/models/`, and save a `.glb.meta.json` sidecar with prompt, source, and license notes. `custom_http` posts `{ prompt, output_format: "glb", options }` and accepts a binary GLB, a URL field, or base64 model data.
 
 Use `godot_help` with `category: "debug"` for mandatory validation rules:
 

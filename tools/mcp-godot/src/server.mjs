@@ -276,7 +276,8 @@ const tools = [
     prompt: { type: "string" },
     provider: { type: "string", enum: MODEL_3D_PROVIDERS, default: "none" },
     target_path: { type: "string" },
-    name: { type: "string" }
+    name: { type: "string" },
+    quality: { type: "string", enum: ["preview", "refine"], default: "preview", description: "Meshy quality mode. preview is faster; refine creates a textured GLB and may cost more credits." }
   }, ["prompt"]),
   tool("godot_list_generation_jobs", "List queued or completed generation job JSON files.", {
     kind: { type: "string", enum: ["all", "images", "models", "chat"], default: "all" },
@@ -543,6 +544,9 @@ async function godotDoctor(args) {
   }
   if (providers.image.provider === "none" && providers.model3d.provider === "none") {
     recommendations.push("Generation providers are set to none; prompts will be saved as jobs instead of calling real services.");
+  }
+  if (providers.model3d.provider !== "none" && !providers.model3d.configured) {
+    recommendations.push(`3D provider ${providers.model3d.provider} is missing: ${providers.model3d.missing.join(", ")}.`);
   }
 
   return {
@@ -1260,8 +1264,9 @@ async function godotGenerate3dModel(args) {
     projectRoot,
     provider,
     prompt: args.prompt,
+    targetAbs,
     targetResPath: toResPath(targetAbs),
-    options: { name },
+    options: { name, quality: args.quality ?? env.MESHY_QUALITY ?? "preview" },
     env
   });
 }
@@ -1537,8 +1542,18 @@ function generationHelp() {
     imageProviders: IMAGE_PROVIDERS,
     modelProviders: MODEL_3D_PROVIDERS,
     defaultBehavior: "provider=none writes a job file under generation_jobs/ instead of calling a service.",
-    realAdapters: ["openai image generation", "custom_http image generation"],
-    declaredInterfaces: ["polza_ai", "local_comfyui", "tripo", "meshy"]
+    realAdapters: ["openai image generation", "custom_http image generation", "meshy text-to-3d", "tripo text-to-model", "custom_http model generation"],
+    declaredInterfaces: ["polza_ai", "local_comfyui"],
+    modelProviderKeys: {
+      meshy: ["MODEL_3D_PROVIDER=meshy", "MESHY_API_KEY", "MESHY_QUALITY=preview|refine"],
+      tripo: ["MODEL_3D_PROVIDER=tripo", "TRIPO_API_KEY"],
+      custom_http: ["MODEL_3D_PROVIDER=custom_http", "CUSTOM_MODEL_HTTP_URL", "CUSTOM_MODEL_HTTP_TOKEN optional"]
+    },
+    notes: [
+      "Generated 3D models are saved as GLB by default under assets/generated/models/.",
+      "A .glb.meta.json sidecar records prompt, provider, source, and license notes.",
+      "Provider keys must be in .env or environment variables; tool results never echo secret values."
+    ]
   };
 }
 
@@ -1605,7 +1620,7 @@ function usageTemplate(name) {
     godot_generate_sprite: { provider: "none", prompt: "small friendly slime sprite", target_path: "assets/generated/sprites/slime.png" },
     godot_generate_texture: { provider: "none", prompt: "tileable stone floor", seamless: true, target_path: "assets/generated/textures/stone.png" },
     godot_import_3d_model: { source_path: "assets/source/models/prop.glb", target_path: "assets/models/prop.glb" },
-    godot_generate_3d_model: { provider: "none", prompt: "low poly treasure chest", target_path: "assets/generated/models/chest.glb" },
+    godot_generate_3d_model: { provider: "none", prompt: "low poly treasure chest", target_path: "assets/generated/models/chest.glb", quality: "preview" },
     godot_list_generation_jobs: { kind: "all", max_jobs: 50 },
     godot_update_generation_job_status: { job_path: "generation_jobs/images/example.json", status: "done", note: "Imported manually." },
     godot_run_project: { mode: "cli", dry_run: true },

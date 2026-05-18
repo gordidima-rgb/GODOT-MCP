@@ -152,10 +152,29 @@ Provider notes:
 
 - `openai` image generation reads `OPENAI_API_KEY` and `OPENAI_IMAGE_MODEL` from `.env` or environment variables.
 - `custom_http` image generation posts JSON to `CUSTOM_IMAGE_HTTP_URL`.
-- `polza_ai`, `local_comfyui`, `tripo`, and `meshy` are declared as provider interfaces. They queue jobs until a concrete adapter contract is configured.
-- 3D model providers currently queue jobs by design unless a project-specific adapter is added.
+- `meshy` 3D generation reads `MESHY_API_KEY`, calls Meshy Text to 3D, downloads a GLB, and writes a `.glb.meta.json` sidecar.
+- `tripo` 3D generation reads `TRIPO_API_KEY`, calls the Tripo text-to-model API, downloads the returned model URL, and writes a `.glb.meta.json` sidecar.
+- `custom_http` 3D generation posts JSON to `CUSTOM_MODEL_HTTP_URL` and accepts either a binary GLB response, a model URL, or base64 model data.
+- `polza_ai` and `local_comfyui` are declared image provider interfaces that still queue jobs until concrete adapter contracts are configured.
 
-Image adapters live in `tools/mcp-godot/src/provider_adapters/`. This keeps provider-specific HTTP/API code separate from the MCP tool definitions.
+Image and 3D model adapters live in `tools/mcp-godot/src/provider_adapters/`. This keeps provider-specific HTTP/API code separate from the MCP tool definitions.
+
+For 3D model keys, open Godot, enable the `AI MCP Bridge` dock, then use `3D model providers`:
+
+1. Choose `meshy`, `tripo`, or `custom_http`.
+2. Paste the provider API key or custom URL/token.
+3. Press `Save 3D keys`.
+4. Restart the MCP client so the Node server reloads `.env`.
+
+Example `.env` for high-quality Meshy output:
+
+```text
+MODEL_3D_PROVIDER=meshy
+MESHY_API_KEY=your_key_here
+MESHY_QUALITY=refine
+```
+
+Use `MESHY_QUALITY=preview` for faster draft meshes. Use `refine` for textured GLB output when you are ready to spend the extra provider credits.
 
 The Godot editor chat panel reads these optional variables:
 
@@ -174,6 +193,7 @@ Set `AI_CHAT_PROVIDER=openai_compatible` to call a local or remote OpenAI-compat
 
 ```powershell
 node .\tools\mcp-godot\test\smoke.mjs
+node .\tools\mcp-godot\test\model-providers.mjs
 ```
 
 Expected result:

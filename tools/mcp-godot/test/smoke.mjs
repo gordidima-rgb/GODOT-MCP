@@ -104,6 +104,13 @@ try {
   const help = await call("godot_help", { category: "coverage" });
   assert(help.coverage.strong.some((item) => item.includes("project scan")), "godot_help must expose coverage info");
 
+  const generationHelp = await call("godot_help", { category: "generation" });
+  assert(generationHelp.generation.realAdapters.includes("meshy text-to-3d"), "generation help must include Meshy model adapter");
+  assert(generationHelp.generation.realAdapters.includes("tripo text-to-model"), "generation help must include Tripo model adapter");
+
+  const generateModelTool = listed.tools.find((tool) => tool.name === "godot_generate_3d_model");
+  assert(generateModelTool.inputSchema.properties.quality.enum.includes("refine"), "godot_generate_3d_model must expose Meshy quality");
+
   const debugHelp = await call("godot_help", { category: "debug" });
   assert(
     debugHelp.debug.afterGameplayScriptChanges.required === true,
@@ -138,7 +145,7 @@ try {
 
   const doctor = await call("godot_doctor", { timeout_ms: 250 });
   assert(doctor.projectRoot === fixtureRoot, "godot_doctor must report the fixture project root");
-  assert(doctor.serverVersion === "0.3.4", "godot_doctor must report server version");
+  assert(doctor.serverVersion === "0.3.5", "godot_doctor must report server version");
   assert(doctor.projectGodot.exists === true, "godot_doctor must see project.godot");
 
   const codexConfig = await call("godot_codex_config", {});
@@ -388,6 +395,15 @@ try {
     name: "smoke-model"
   });
   assert(modelJob.queued && modelJob.jobPath.startsWith("res://generation_jobs/models/"), "godot_generate_3d_model must create a job");
+
+  const missingMeshyJob = await call("godot_generate_3d_model", {
+    provider: "meshy",
+    prompt: "A tiny smoke-test generated model",
+    target_path: "assets/generated/models/missing-meshy.glb",
+    name: "missing-meshy",
+    quality: "preview"
+  });
+  assert(missingMeshyJob.queued && missingMeshyJob.job.options.reason === "missing MESHY_API_KEY", "meshy without a key must queue a safe job");
 
   const jobs = await call("godot_list_generation_jobs", { kind: "all" });
   assert(jobs.count >= 3, "godot_list_generation_jobs must see queued jobs");

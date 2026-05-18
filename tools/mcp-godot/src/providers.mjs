@@ -2,8 +2,11 @@ import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { safeFilenamePart, safeTimestamp } from "./security.mjs";
+import { generateCustomHttpModel } from "./provider_adapters/custom_http_model.mjs";
 import { generateCustomHttpImage } from "./provider_adapters/custom_http_image.mjs";
+import { generateMeshyModel } from "./provider_adapters/meshy_model.mjs";
 import { generateOpenAIImage } from "./provider_adapters/openai_image.mjs";
+import { generateTripoModel } from "./provider_adapters/tripo_model.mjs";
 
 export const IMAGE_PROVIDERS = ["none", "openai", "polza_ai", "local_comfyui", "custom_http"];
 export const MODEL_3D_PROVIDERS = ["none", "tripo", "meshy", "custom_http"];
@@ -88,7 +91,7 @@ export async function generateImageWithProvider({ projectRoot, provider, prompt,
   });
 }
 
-export async function generateModelWithProvider({ projectRoot, provider, prompt, targetResPath, options = {}, env }) {
+export async function generateModelWithProvider({ projectRoot, provider, prompt, targetAbs, targetResPath, options = {}, env }) {
   if (provider === "none") {
     return createGenerationJob({
       projectRoot,
@@ -100,17 +103,55 @@ export async function generateModelWithProvider({ projectRoot, provider, prompt,
     });
   }
 
-  // Tripo and Meshy have different API contracts and account-specific settings.
-  // Keep them behind jobs until a concrete adapter configuration is supplied.
-  const keyName = provider === "tripo" ? "TRIPO_API_KEY" : provider === "meshy" ? "MESHY_API_KEY" : "CUSTOM_MODEL_HTTP_TOKEN";
-  const url = provider === "custom_http" ? env.CUSTOM_MODEL_HTTP_URL : "";
-  if (provider === "custom_http" && url) {
-    return {
-      ok: false,
+  if (provider === "meshy") {
+    if (!env.MESHY_API_KEY) {
+      return createGenerationJob({
+        projectRoot,
+        kind: "models",
+        provider,
+        prompt,
+        targetPath: targetResPath,
+        options: { ...options, reason: "missing MESHY_API_KEY" }
+      });
+    }
+    return generateMeshyModel({ prompt, targetAbs, targetResPath, options, env });
+  }
+
+  if (provider === "tripo") {
+    if (!env.TRIPO_API_KEY) {
+      return createGenerationJob({
+        projectRoot,
+        kind: "models",
+        provider,
+        prompt,
+        targetPath: targetResPath,
+        options: { ...options, reason: "missing TRIPO_API_KEY" }
+      });
+    }
+    return generateTripoModel({ prompt, targetAbs, targetResPath, options, env });
+  }
+
+  if (provider === "custom_http") {
+    if (!env.CUSTOM_MODEL_HTTP_URL) {
+      return createGenerationJob({
+        projectRoot,
+        kind: "models",
+        provider,
+        prompt,
+        targetPath: targetResPath,
+        options: { ...options, reason: "missing CUSTOM_MODEL_HTTP_URL" }
+      });
+    }
+    return generateCustomHttpModel({
       provider,
-      queued: false,
-      message: "custom_http model generation adapter is declared but not implemented yet. Save a job with provider none or add a concrete adapter contract."
-    };
+      url: env.CUSTOM_MODEL_HTTP_URL,
+      token: env.CUSTOM_MODEL_HTTP_TOKEN,
+      prompt,
+      targetAbs,
+      targetResPath,
+      options,
+      env
+    });
   }
 
   return createGenerationJob({

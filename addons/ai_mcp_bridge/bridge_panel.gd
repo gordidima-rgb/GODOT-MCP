@@ -6,10 +6,13 @@ const MIN_PORT := 1024
 const MAX_PORT := 65535
 const MAX_HISTORY := 8
 const MAX_SNAPSHOT_DEPTH := 16
+const ENV_PATH := "res://.env"
 const INSTRUCTIONS_PATH := "res://docs/AI_AGENT_INSTRUCTIONS.md"
 const CLIENT_SETUP_PATH := "res://docs/AI_CLIENT_SETUP.md"
 const ALLOWED_ROOT_TYPES := ["Node2D", "Node3D", "Control", "CharacterBody2D", "CharacterBody3D"]
 const CLIENT_NAMES := ["Codex", "Visual Studio / VS Code", "Claude"]
+const MODEL_PROVIDER_NAMES := ["none", "meshy", "tripo", "custom_http"]
+const MESHY_QUALITY_NAMES := ["preview", "refine"]
 const AUTO_START_SETTING := "ai_mcp_bridge/auto_start"
 const PORT_SETTING := "ai_mcp_bridge/port"
 
@@ -34,6 +37,13 @@ var _instruction_edit: TextEdit
 var _quick_guide_label: RichTextLabel
 var _start_button: Button
 var _stop_button: Button
+var _model_provider_select: OptionButton
+var _meshy_quality_select: OptionButton
+var _meshy_key_edit: LineEdit
+var _tripo_key_edit: LineEdit
+var _custom_model_url_edit: LineEdit
+var _custom_model_token_edit: LineEdit
+var _model_provider_status_label: RichTextLabel
 
 func _init() -> void:
     name = "AI MCP Bridge"
@@ -120,6 +130,7 @@ func _build_ui() -> void:
     _doctor_label.text = "Doctor has not run yet."
     add_child(_doctor_label)
 
+    _build_model_provider_ui()
     _build_instruction_ui()
     _build_chat_ui()
 
@@ -282,8 +293,138 @@ func _refresh_quick_guide() -> void:
         "1. Bridge: " + bridge_step + ".",
         "2. Click Run Doctor, then Copy Codex config.",
         "3. Paste the TOML into Codex config, restart Codex, then ask: run godot_doctor.",
+        "3D models: choose meshy, tripo, or custom_http below and save keys to .env.",
         "Optional: for local chat, keep provider none and press Queue, or set AI_CHAT_* in .env and press Reload .env."
     ])
+
+func _build_model_provider_ui() -> void:
+    var separator := HSeparator.new()
+    add_child(separator)
+
+    var title := Label.new()
+    title.text = "3D model providers"
+    add_child(title)
+
+    var provider_row := HBoxContainer.new()
+    add_child(provider_row)
+
+    var provider_label := Label.new()
+    provider_label.text = "MODEL_3D_PROVIDER"
+    provider_row.add_child(provider_label)
+
+    _model_provider_select = OptionButton.new()
+    for provider_name in MODEL_PROVIDER_NAMES:
+        _model_provider_select.add_item(String(provider_name))
+    _model_provider_select.item_selected.connect(_on_model_provider_changed)
+    provider_row.add_child(_model_provider_select)
+
+    var quality_row := HBoxContainer.new()
+    add_child(quality_row)
+
+    var quality_label := Label.new()
+    quality_label.text = "MESHY_QUALITY"
+    quality_row.add_child(quality_label)
+
+    _meshy_quality_select = OptionButton.new()
+    for quality_name in MESHY_QUALITY_NAMES:
+        _meshy_quality_select.add_item(String(quality_name))
+    _meshy_quality_select.tooltip_text = "preview is faster. refine creates a textured GLB and may use more credits."
+    _meshy_quality_select.item_selected.connect(_on_model_provider_changed)
+    quality_row.add_child(_meshy_quality_select)
+
+    _meshy_key_edit = _add_env_line_edit("MESHY_API_KEY", true)
+    _tripo_key_edit = _add_env_line_edit("TRIPO_API_KEY", true)
+    _custom_model_url_edit = _add_env_line_edit("CUSTOM_MODEL_HTTP_URL", false)
+    _custom_model_token_edit = _add_env_line_edit("CUSTOM_MODEL_HTTP_TOKEN", true)
+
+    var button_row := HBoxContainer.new()
+    add_child(button_row)
+
+    var load_button := Button.new()
+    load_button.text = "Load .env"
+    load_button.tooltip_text = "Read local 3D provider settings from res://.env."
+    load_button.pressed.connect(_on_load_model_provider_env_pressed)
+    button_row.add_child(load_button)
+
+    var save_button := Button.new()
+    save_button.text = "Save 3D keys"
+    save_button.tooltip_text = "Save provider choice and 3D API keys to res://.env."
+    save_button.pressed.connect(_on_save_model_provider_env_pressed)
+    button_row.add_child(save_button)
+
+    _model_provider_status_label = RichTextLabel.new()
+    _model_provider_status_label.custom_minimum_size = Vector2(360, 86)
+    _model_provider_status_label.fit_content = true
+    add_child(_model_provider_status_label)
+
+    _load_model_provider_fields()
+
+func _add_env_line_edit(label_text: String, secret: bool) -> LineEdit:
+    var row := HBoxContainer.new()
+    add_child(row)
+
+    var label := Label.new()
+    label.text = label_text
+    label.custom_minimum_size = Vector2(170, 0)
+    row.add_child(label)
+
+    var edit := LineEdit.new()
+    edit.secret = secret
+    edit.placeholder_text = label_text
+    edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    edit.text_changed.connect(_on_model_provider_text_changed)
+    row.add_child(edit)
+    return edit
+
+func _on_load_model_provider_env_pressed() -> void:
+    _load_model_provider_fields()
+    record_command("Loaded 3D provider settings from %s" % ENV_PATH)
+
+func _on_save_model_provider_env_pressed() -> void:
+    var values := {
+        "MODEL_3D_PROVIDER": _selected_model_provider(),
+        "MESHY_QUALITY": _selected_meshy_quality(),
+        "MESHY_API_KEY": _clean_env_value(_meshy_key_edit.text),
+        "TRIPO_API_KEY": _clean_env_value(_tripo_key_edit.text),
+        "CUSTOM_MODEL_HTTP_URL": _clean_env_value(_custom_model_url_edit.text),
+        "CUSTOM_MODEL_HTTP_TOKEN": _clean_env_value(_custom_model_token_edit.text)
+    }
+    var result := _write_env_values(values)
+    if bool(result.get("ok", false)):
+        record_command("Saved 3D provider settings to %s" % ENV_PATH)
+        _refresh_model_provider_status()
+    else:
+        record_error(String(result.get("error", "Could not save 3D provider settings.")))
+
+func _load_model_provider_fields() -> void:
+    var values := _read_env_values()
+    _set_model_provider(String(values.get("MODEL_3D_PROVIDER", "none")))
+    _set_meshy_quality(String(values.get("MESHY_QUALITY", "preview")))
+    _meshy_key_edit.text = String(values.get("MESHY_API_KEY", ""))
+    _tripo_key_edit.text = String(values.get("TRIPO_API_KEY", ""))
+    _custom_model_url_edit.text = String(values.get("CUSTOM_MODEL_HTTP_URL", ""))
+    _custom_model_token_edit.text = String(values.get("CUSTOM_MODEL_HTTP_TOKEN", ""))
+    _refresh_model_provider_status()
+
+func _refresh_model_provider_status() -> void:
+    if _model_provider_status_label == null:
+        return
+    var lines := [
+        "3D provider: " + _selected_model_provider(),
+        "Meshy key: " + _secret_status(_meshy_key_edit.text),
+        "Tripo key: " + _secret_status(_tripo_key_edit.text),
+        "Custom URL: " + ("set" if not _custom_model_url_edit.text.strip_edges().is_empty() else "empty"),
+        "Custom token: " + _secret_status(_custom_model_token_edit.text)
+    ]
+    if not FileAccess.file_exists(ENV_PATH):
+        lines.append(".env will be created when you press Save 3D keys.")
+    _model_provider_status_label.text = "\n".join(lines)
+
+func _on_model_provider_changed(_index: int) -> void:
+    _refresh_model_provider_status()
+
+func _on_model_provider_text_changed(_text: String) -> void:
+    _refresh_model_provider_status()
 
 func _on_client_selected(_index: int) -> void:
     if _client_setup_label == null:
@@ -347,6 +488,34 @@ func _current_client_name() -> String:
     if selected < 0 or selected >= CLIENT_NAMES.size():
         return String(CLIENT_NAMES[0])
     return String(CLIENT_NAMES[selected])
+
+func _selected_model_provider() -> String:
+    if _model_provider_select == null:
+        return "none"
+    var selected := _model_provider_select.selected
+    if selected < 0 or selected >= MODEL_PROVIDER_NAMES.size():
+        return "none"
+    return String(MODEL_PROVIDER_NAMES[selected])
+
+func _set_model_provider(provider: String) -> void:
+    if _model_provider_select == null:
+        return
+    var index := MODEL_PROVIDER_NAMES.find(provider)
+    _model_provider_select.select(index if index >= 0 else 0)
+
+func _selected_meshy_quality() -> String:
+    if _meshy_quality_select == null:
+        return "preview"
+    var selected := _meshy_quality_select.selected
+    if selected < 0 or selected >= MESHY_QUALITY_NAMES.size():
+        return "preview"
+    return String(MESHY_QUALITY_NAMES[selected])
+
+func _set_meshy_quality(quality: String) -> void:
+    if _meshy_quality_select == null:
+        return
+    var index := MESHY_QUALITY_NAMES.find(quality)
+    _meshy_quality_select.select(index if index >= 0 else 0)
 
 func _load_editor_settings() -> void:
     var settings := EditorInterface.get_editor_settings()
@@ -414,6 +583,7 @@ func _codex_config_text() -> String:
 func _run_local_doctor() -> Dictionary:
     var project_exists := FileAccess.file_exists("res://project.godot")
     var env_exists := FileAccess.file_exists("res://.env")
+    var env_values := _read_env_values()
     var folders: Dictionary = {}
     for folder in ["res://scenes", "res://scripts", "res://Assets", "res://assets", "res://generation_jobs"]:
         folders[folder] = DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(folder))
@@ -430,6 +600,9 @@ func _run_local_doctor() -> Dictionary:
     return {
         "project_godot": project_exists,
         "env": env_exists,
+        "model_provider": String(env_values.get("MODEL_3D_PROVIDER", "none")),
+        "meshy_key_set": not String(env_values.get("MESHY_API_KEY", "")).is_empty(),
+        "tripo_key_set": not String(env_values.get("TRIPO_API_KEY", "")).is_empty(),
         "running": _running,
         "port": _port,
         "folders": folders,
@@ -441,6 +614,9 @@ func _format_doctor_result(result: Dictionary) -> String:
         "Doctor",
         "project.godot: " + ("ok" if bool(result.get("project_godot", false)) else "missing"),
         ".env: " + ("found" if bool(result.get("env", false)) else "not found"),
+        "3D provider: " + String(result.get("model_provider", "none")),
+        "Meshy key: " + ("set" if bool(result.get("meshy_key_set", false)) else "empty"),
+        "Tripo key: " + ("set" if bool(result.get("tripo_key_set", false)) else "empty"),
         "bridge: " + ("running" if bool(result.get("running", false)) else "stopped"),
         "port: " + str(int(result.get("port", DEFAULT_PORT)))
     ]
@@ -466,6 +642,77 @@ func _write_text_file(res_path: String, content: String) -> Dictionary:
     file.store_string(content)
     file.close()
     return {"ok": true, "path": res_path}
+
+func _read_env_values() -> Dictionary:
+    var values: Dictionary = {}
+    if not FileAccess.file_exists(ENV_PATH):
+        return values
+    var file := FileAccess.open(ENV_PATH, FileAccess.READ)
+    if file == null:
+        return values
+    var text := file.get_as_text()
+    file.close()
+    for raw_line in text.replace("\r\n", "\n").split("\n"):
+        var line := String(raw_line).strip_edges()
+        if line.is_empty() or line.begins_with("#"):
+            continue
+        var index := line.find("=")
+        if index <= 0:
+            continue
+        var key := line.substr(0, index).strip_edges()
+        var value := line.substr(index + 1).strip_edges()
+        values[key] = _env_unquote(value)
+    return values
+
+func _write_env_values(values: Dictionary) -> Dictionary:
+    if not _is_safe_res_path(ENV_PATH, ".env"):
+        return _error_response("Unsafe .env path.")
+    var text := "# Local provider settings. Do not commit real secrets.\n"
+    if FileAccess.file_exists(ENV_PATH):
+        var read_file := FileAccess.open(ENV_PATH, FileAccess.READ)
+        if read_file == null:
+            return _error_response("Could not read .env.")
+        text = read_file.get_as_text()
+        read_file.close()
+
+    var seen: Dictionary = {}
+    var lines: Array[String] = []
+    for raw_line in text.replace("\r\n", "\n").split("\n"):
+        var original := String(raw_line).trim_suffix("\r")
+        var stripped := original.strip_edges()
+        if stripped.is_empty() or stripped.begins_with("#") or stripped.find("=") <= 0:
+            lines.append(original)
+            continue
+        var key := stripped.substr(0, stripped.find("=")).strip_edges()
+        if values.has(key):
+            lines.append("%s=%s" % [key, _clean_env_value(String(values[key]))])
+            seen[key] = true
+        else:
+            lines.append(original)
+
+    if not lines.is_empty() and not lines[lines.size() - 1].is_empty():
+        lines.append("")
+    for key in values.keys():
+        if not bool(seen.get(key, false)):
+            lines.append("%s=%s" % [String(key), _clean_env_value(String(values[key]))])
+
+    var file := FileAccess.open(ENV_PATH, FileAccess.WRITE)
+    if file == null:
+        return _error_response("Could not open .env for writing.")
+    file.store_string("\n".join(lines).strip_edges(false, true) + "\n")
+    file.close()
+    return {"ok": true, "path": ENV_PATH}
+
+func _clean_env_value(value: String) -> String:
+    return value.replace("\r", "").replace("\n", "").strip_edges()
+
+func _env_unquote(value: String) -> String:
+    if value.length() >= 2 and value.begins_with("\"") and value.ends_with("\""):
+        return value.substr(1, value.length() - 2)
+    return value
+
+func _secret_status(value: String) -> String:
+    return "set" if not value.strip_edges().is_empty() else "empty"
 
 func _project_root_for_docs() -> String:
     return ProjectSettings.globalize_path("res://").replace("\\", "/").trim_suffix("/")

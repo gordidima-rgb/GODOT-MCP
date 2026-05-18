@@ -98,7 +98,19 @@ Queue a sprite prompt with provider none, then list generation jobs.
 
 Provider `none` saves JSON under `generation_jobs/` instead of calling a real service.
 
-## 10. Mark A Generation Job Done
+## 10. Generate A 3D Model With Meshy Or Tripo
+
+In the Godot `AI MCP Bridge` dock, open `3D model providers`, choose `meshy` or `tripo`, paste the API key, and press `Save 3D keys`. The dock writes only to local `.env`; do not put real keys in source files.
+
+Ask Codex:
+
+```text
+Use godot_generate_3d_model with provider meshy to create a low-poly sci-fi crate at assets/generated/models/sci_fi_crate.glb.
+```
+
+Meshy supports `quality: "preview"` for a fast draft and `quality: "refine"` for a textured GLB. Generated models include a `.glb.meta.json` sidecar with provider, prompt, source, and license notes.
+
+## 11. Mark A Generation Job Done
 
 Ask Codex:
 

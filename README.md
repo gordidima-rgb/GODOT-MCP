@@ -6,7 +6,7 @@
 
 Godot MCP AI Bridge for safe AI-assisted Godot 4.x development.
 
-Current version: `0.3.4`
+Current version: `0.3.5`
 
 This repository gives Codex or another MCP-capable AI client a small, safe API for working inside a Godot 4.x project. The MCP server can inspect files, create small Godot resources, queue generation jobs, and call a local Godot EditorPlugin bridge when richer editor context is needed.
 
@@ -200,6 +200,7 @@ Enable `AI MCP Bridge` in Godot, then use the dock to:
 - run Doctor
 - save AI client setup notes
 - save reusable AI agent instructions
+- save 3D model provider keys for Meshy, Tripo, or a custom HTTP model endpoint into `.env`
 - queue editor chat prompts when `AI_CHAT_PROVIDER=none`
 
 The bridge listens only on `127.0.0.1`. If a port is already occupied, the dock reports that clearly and asks you to choose another port or stop the app using it.
@@ -225,6 +226,16 @@ Provider `none` is the default. It writes JSON jobs under `generation_jobs/` and
 
 Real keys must live in `.env` or environment variables, never in source files.
 
+The `AI MCP Bridge` dock has a `3D model providers` section for these local settings:
+
+```text
+MODEL_3D_PROVIDER=meshy
+MESHY_API_KEY=...
+MESHY_QUALITY=preview
+```
+
+Use `meshy` for Meshy Text to 3D, `tripo` for Tripo text-to-model, or `custom_http` for your own GLB-returning endpoint. `godot_generate_3d_model` saves generated GLB files under `assets/generated/models/` by default and writes a `.glb.meta.json` sidecar with the prompt, provider, source, and license note. `MESHY_QUALITY=refine` asks Meshy for the textured refine stage and may use more provider credits than `preview`.
+
 ## Common Problems
 
 | Problem | What to do |
@@ -235,6 +246,7 @@ Real keys must live in `.env` or environment variables, never in source files.
 | Codex does not see tools | Restart Codex after editing MCP config. |
 | A write tool refuses to overwrite | Pass `overwrite: true` only after reviewing the existing file. |
 | Generation did not create an image/model | Check `generation_jobs/`; provider `none` queues jobs by design. |
+| Meshy or Tripo does not start | In the Godot dock, set `MODEL_3D_PROVIDER`, fill the provider key, press `Save 3D keys`, then restart the MCP client so `.env` is reloaded. |
 | A `.scn` scene cannot be edited | Use text `.tscn` scenes for file-based edits or use the editor bridge. |
 | `.env` is missing | Copy `.env.example` to `.env` and fill only the settings you need. |
 
@@ -267,7 +279,10 @@ Run these from the project root:
 ```powershell
 node --check .\tools\mcp-godot\src\server.mjs
 node --check .\tools\mcp-godot\src\providers.mjs
+node --check .\tools\mcp-godot\src\provider_adapters\meshy_model.mjs
+node --check .\tools\mcp-godot\src\provider_adapters\tripo_model.mjs
 node .\tools\mcp-godot\test\smoke.mjs
+node .\tools\mcp-godot\test\model-providers.mjs
 node .\tools\mcp-godot\test\version-check.mjs
 ```
 
