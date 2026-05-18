@@ -4,6 +4,7 @@ This project has a local Godot MCP server in `tools/mcp-godot/`. It is designed 
 
 For Codex, Claude, and other MCP clients, the full capability map is `docs/MCP_CAPABILITIES.md`.
 For the instruction-first model where the AI client does most planning/content work and JS tools stay as safe primitives, read `docs/MCP_AGENT_INSTRUCTIONS.md`.
+For complex or unfamiliar mechanics, use `godot_agent_instructions` with `workflow: "research_mechanic"` so the AI client researches GitHub, YouTube, Godot docs, and credible web sources before implementing.
 
 ## Current Project Scan Notes
 

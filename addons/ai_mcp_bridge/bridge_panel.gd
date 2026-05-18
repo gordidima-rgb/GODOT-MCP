@@ -453,6 +453,7 @@ func _on_save_client_setup_pressed() -> void:
     content += "- Never write real API keys to source files or logs.\n"
     content += "- Use docs/MCP_AGENT_INSTRUCTIONS.md for instruction-first mode.\n"
     content += "- Call godot_agent_instructions for the user task before larger edits.\n"
+    content += "- For complex mechanics, use godot_agent_instructions workflow research_mechanic and research GitHub, YouTube, Godot docs, and credible web sources before implementing.\n"
     content += "- Use docs/MCP_CAPABILITIES.md as the MCP tool map for Codex, Claude, and other clients.\n"
     content += "- Start with project scan, scene list, and error checks before larger edits.\n"
     var result := _write_text_file(CLIENT_SETUP_PATH, content)
@@ -542,6 +543,7 @@ func _default_instruction_text() -> String:
         "Use docs/MCP_CAPABILITIES.md or godot_help as the MCP tool map before choosing tools.",
         "Use instruction-first mode: the AI client plans and writes content; MCP JS tools are safe primitives.",
         "For each task, call godot_agent_instructions with the selected client and task.",
+        "For complex or unfamiliar mechanics, use workflow research_mechanic and research GitHub, YouTube, Godot docs, and credible web sources before implementing.",
         "First inspect the project, list scenes and scripts, then make small scoped changes.",
         "Do not delete existing files unless the user explicitly asks for it.",
         "When creating scripts, add short comments that help a beginner understand the code.",

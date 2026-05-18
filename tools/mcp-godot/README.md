@@ -4,6 +4,8 @@ This is a local stdio MCP server for the current Godot 4 project. It works witho
 
 The server is instruction-first. Codex, Claude, or another AI client should plan and write the project-specific solution. The JavaScript tools are safe primitives for scan/read/write/import/generation jobs/runtime validation.
 
+For complex or unfamiliar gameplay mechanics, the AI client should use `godot_agent_instructions` with `workflow: "research_mechanic"`, search GitHub, YouTube, Godot docs, and credible web sources first, then adapt the best Godot 4 pattern.
+
 ## What It Can Do
 
 For Codex, Claude, and other MCP clients, the full tool map lives in [`../../docs/MCP_CAPABILITIES.md`](../../docs/MCP_CAPABILITIES.md).

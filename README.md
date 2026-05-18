@@ -12,6 +12,8 @@ This repository gives Codex, Claude, or another MCP-capable AI client a small, s
 
 GODOT-MCP is instruction-first: Codex, Claude, or the user's AI model should plan the work, write Godot-specific content, and decide validation loops. The JavaScript MCP tools are intentionally small safe primitives for project IO, imports, generation jobs, editor/Godot checks, and sandbox enforcement.
 
+For complex or unfamiliar mechanics, the AI client should research first on GitHub, YouTube, official Godot docs, and credible web sources, then adapt the best Godot 4 pattern with source/license notes.
+
 The goal is conservative automation:
 
 1. Inspect first.
@@ -124,6 +126,7 @@ This project currently contains both `Assets/` and `assets/`. The doctor reports
 
 - Scan project files and summarize scenes, scripts, resources, materials, textures, and models.
 - Return instruction-first workflow guidance for Codex, Claude, or another MCP client.
+- Guide research-first implementation for complex or unfamiliar mechanics.
 - Search safe text files without reading dotfiles such as `.env`.
 - Create beginner-readable `.gd` scripts.
 - Create simple text `.tscn` scenes and add/update nodes.

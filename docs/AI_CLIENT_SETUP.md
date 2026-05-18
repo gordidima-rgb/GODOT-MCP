@@ -56,6 +56,7 @@ After reconnecting Claude, ask it to read `docs/MCP_AGENT_INSTRUCTIONS.md` and `
 - Keep all file changes inside the project root.
 - Use `res://` paths for Godot-facing references.
 - Use `godot_agent_instructions` first so planning stays in the AI client and MCP JS tools stay as safe primitives.
+- For complex or unfamiliar mechanics, search GitHub, YouTube, official Godot docs, and credible web sources before implementing; record useful source links and license notes.
 - Never write real API keys to source files or logs.
 - Start with project scan, scene list, and error checks before larger edits.
 - Use dry runs before larger scene/script writes.

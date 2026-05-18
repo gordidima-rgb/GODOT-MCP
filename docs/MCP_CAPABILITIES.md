@@ -43,7 +43,7 @@ Use `res://` and project-local paths. Keep all changes inside the folder that co
 
 | Owner | Responsibilities |
 | --- | --- |
-| AI client | Understand the user request, choose Godot 4 architecture, write GDScript and scene content, decide workflow, review tool results, run required validation loops, explain changed files. |
+| AI client | Understand the user request, research complex or unfamiliar mechanics online first, choose Godot 4 architecture, write GDScript and scene content, decide workflow, review tool results, run required validation loops, explain changed files. |
 | MCP JS tools | Enforce project-root sandboxing, provide scan/search/read primitives, apply small guarded writes, import assets, queue/call configured providers, run Godot/editor bridge checks, return structured errors. |
 
 ### Editor Bridge
@@ -172,6 +172,20 @@ godot_read_scene
 godot_check_errors
 ```
 
+### Implement A Complex Or Unfamiliar Mechanic
+
+```text
+godot_agent_instructions({ "workflow": "research_mechanic", "task": "<complex mechanic>" })
+search GitHub, YouTube, Godot docs, and credible web sources
+compare source quality, Godot version, and license notes
+godot_project_scan
+dry-run planned writes
+implement the adapted Godot 4 pattern
+godot_check_errors
+run the game and inspect the console when gameplay scripts changed
+capture a screenshot when visible placement changed
+```
+
 ### Create A Third-Person Prototype
 
 ```text
@@ -244,5 +258,5 @@ Use `godot_capture_editor_viewport` instead when the task specifically needs the
 Paste this into Codex, Claude, or another MCP client after connecting the server:
 
 ```text
-Use docs/MCP_AGENT_INSTRUCTIONS.md and docs/MCP_CAPABILITIES.md as the Godot MCP tool map. First call godot_agent_instructions for my task, then godot_help with category overview, godot_doctor, godot_project_scan, and godot_check_errors. Plan and write the solution in the AI client; use MCP JS tools only as safe primitives. Use dry runs before scene/script writes. If gameplay scripts changed, run the game and inspect the Godot console. If visible objects changed, capture a screenshot and inspect placement. Keep provider none unless I explicitly configure a provider in .env.
+Use docs/MCP_AGENT_INSTRUCTIONS.md and docs/MCP_CAPABILITIES.md as the Godot MCP tool map. First call godot_agent_instructions for my task, then godot_help with category overview, godot_doctor, godot_project_scan, and godot_check_errors. Plan and write the solution in the AI client; use MCP JS tools only as safe primitives. For complex or unfamiliar mechanics, search GitHub, YouTube, Godot docs, and credible web sources before implementing, then cite source links/licenses. Use dry runs before scene/script writes. If gameplay scripts changed, run the game and inspect the Godot console. If visible objects changed, capture a screenshot and inspect placement. Keep provider none unless I explicitly configure a provider in .env.
 ```

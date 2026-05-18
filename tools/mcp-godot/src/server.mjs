@@ -115,7 +115,7 @@ const tools = [
   }),
   tool("godot_agent_instructions", "Return instruction-first guidance for Codex, Claude, or another AI client. The MCP JS tools stay as safe project primitives.", {
     client: { type: "string", enum: ["generic", "codex", "claude"], default: "generic" },
-    workflow: { type: "string", enum: ["auto", "inspect", "create_scene", "third_person", "first_person", "assets", "debug", "visual_check", "provider_setup", "bridge"], default: "auto" },
+    workflow: { type: "string", enum: ["auto", "inspect", "create_scene", "research_mechanic", "third_person", "first_person", "assets", "debug", "visual_check", "provider_setup", "bridge"], default: "auto" },
     task: { type: "string", description: "Optional user task. Used to choose an instruction workflow when workflow is auto." },
     detail: { type: "string", enum: ["short", "full"], default: "full" }
   }),
@@ -1555,9 +1555,20 @@ function agentHelp() {
       "understanding the user's intent",
       "choosing Godot 4 nodes, scripts, resources, and scene structure",
       "writing GDScript and scene content that matches the project",
-      "deciding whether to use third-person, first-person, asset, debug, or validation workflow",
+      "deciding whether to use research-first mechanics, third-person, first-person, asset, debug, or validation workflow",
       "reading tool results and correcting the next action"
     ],
+    researchFirstForMechanics: {
+      requiredWhen: "The user asks for a complex mechanic, advanced system, or any gameplay behavior the AI client is not already confident implementing well.",
+      sources: ["GitHub repositories", "YouTube implementation/tutorial videos", "official Godot documentation", "articles or demos from credible Godot developers"],
+      rules: [
+        "Search the web before implementing when the mechanic is unfamiliar or complex.",
+        "Prefer Godot 4.x implementations; translate Godot 3.x APIs carefully only when needed.",
+        "Record useful source links and license notes in the plan or final summary.",
+        "Do not copy incompatible or unclear-license code verbatim.",
+        "Extract the design pattern, adapt it to the current project, then validate in Godot."
+      ]
+    },
     jsToolsOwn: [
       "path sandboxing inside the project root",
       "small reversible file writes with dry_run and overwrite controls",
@@ -1662,6 +1673,7 @@ function selectAgentWorkflow(workflow, task) {
   const explicit = String(workflow ?? "auto").toLowerCase();
   if (explicit && explicit !== "auto") return explicit;
   const text = String(task ?? "").toLowerCase();
+  if (isComplexMechanicTask(text)) return "research_mechanic";
   if (text.includes("first person") || text.includes("first-person") || text.includes("1st person") || text.includes("fps") || text.includes("\u043e\u0442 \u043f\u0435\u0440\u0432\u043e\u0433\u043e \u043b\u0438\u0446\u0430") || text.includes("\u0444\u043f\u0441")) {
     return "first_person";
   }
@@ -1674,6 +1686,62 @@ function selectAgentWorkflow(workflow, task) {
   if (text.includes("bridge") || text.includes("editor")) return "bridge";
   if (text.includes("scene") || text.includes("node") || text.includes("script")) return "create_scene";
   return "inspect";
+}
+
+function isComplexMechanicTask(text) {
+  const complexityWords = [
+    "complex",
+    "advanced",
+    "unknown",
+    "unfamiliar",
+    "not familiar",
+    "сложн",
+    "незнаком",
+    "не знаком",
+    "не знаю",
+    "не уме",
+    "механик",
+    "михан",
+    "mechanic",
+    "system",
+    "система"
+  ];
+  const mechanicWords = [
+    "grappling",
+    "hook",
+    "parkour",
+    "wall run",
+    "wallrun",
+    "ledge",
+    "mantle",
+    "climb",
+    "swimming",
+    "flight",
+    "vehicle",
+    "inventory",
+    "crafting",
+    "combat",
+    "combo",
+    "dialogue",
+    "dialog",
+    "quest",
+    "save system",
+    "procedural",
+    "парк",
+    "крюк",
+    "кошка",
+    "лазани",
+    "карабкан",
+    "инвентар",
+    "крафт",
+    "боев",
+    "комбо",
+    "диалог",
+    "квест",
+    "сохран",
+    "процедур"
+  ];
+  return complexityWords.some((word) => text.includes(word)) && mechanicWords.some((word) => text.includes(word));
 }
 
 function buildAgentInstructions({ client, workflow, task, detail }) {
@@ -1740,6 +1808,19 @@ function agentWorkflowInstructions(workflow) {
       intent: "Create or modify a scene/script with AI-authored Godot 4 content.",
       steps: ["Inspect existing scene/script patterns.", "Draft the node tree and script behavior in the AI client.", "Use dry_run for script and scene writes.", "Apply the smallest useful writes.", "Read back the scene and run validation."]
     },
+    research_mechanic: {
+      name: "research_mechanic",
+      intent: "Implement a complex or unfamiliar gameplay mechanic only after researching proven implementations.",
+      steps: [
+        "Pause implementation and describe what is unknown about the mechanic.",
+        "Search GitHub, YouTube, official Godot docs, and credible web tutorials for Godot 4.x examples or close equivalents.",
+        "Compare at least two sources when possible, noting Godot version, license, quality, and whether code can be reused or only studied.",
+        "Extract the design pattern and adapt it to this project's existing scenes, scripts, inputs, and assets.",
+        "Implement with small dry-run guarded MCP writes where possible.",
+        "Run Godot checks, run the game or target scene for gameplay script changes, inspect console output, and screenshot visible results when relevant.",
+        "Credit source links and license notes in the final summary."
+      ]
+    },
     third_person: {
       name: "third_person",
       intent: "Create a character prototype using Jeh3no third-person data, not a capsule placeholder.",
@@ -1783,6 +1864,7 @@ function toolChainForAgentWorkflow(workflow) {
   const chains = {
     inspect: ["godot_doctor", "godot_project_scan", "godot_list_scenes", "godot_list_scripts", "godot_check_errors"],
     create_scene: ["godot_project_scan", "godot_create_script/dry_run:true", "godot_create_scene/dry_run:true", "godot_create_script", "godot_create_scene", "godot_read_scene", "godot_check_errors"],
+    research_mechanic: ["godot_agent_instructions/workflow:research_mechanic", "external research: GitHub + YouTube + docs/web", "compare sources and licenses", "godot_project_scan", "dry_run planned writes", "implement adapted Godot 4 pattern", "godot_check_errors", "godot_run_project/dry_run:false if gameplay scripts changed", "godot_capture_screenshot if visible objects changed"],
     third_person: ["godot_install_third_person_controller", "godot_create_third_person_prototype", "godot_read_scene", "godot_check_errors"],
     first_person: ["godot_install_first_person_controller", "godot_create_first_person_prototype", "godot_read_scene", "godot_check_errors"],
     assets: ["godot_generate_sprite/provider:none", "godot_generate_texture/provider:none", "godot_generate_3d_model/provider:none", "godot_list_generation_jobs", "godot_check_errors"],
@@ -1796,7 +1878,8 @@ function toolChainForAgentWorkflow(workflow) {
 
 function readyAgentPrompt(client, workflow, task) {
   const taskLine = task ? ` User task: ${task}.` : "";
-  return `Use instruction-first Godot MCP mode for ${client}.${taskLine} Plan and write the solution in the AI client. Use MCP tools only as safe primitives for project scan/read/write/import/generation jobs/runtime validation. Start with godot_doctor, godot_project_scan, and godot_check_errors, then follow the ${workflow} workflow.`;
+  const researchLine = workflow === "research_mechanic" ? " Because this is a complex or unfamiliar mechanic, search GitHub, YouTube, official Godot docs, and credible web tutorials before implementing; keep source links and license notes." : "";
+  return `Use instruction-first Godot MCP mode for ${client}.${taskLine} Plan and write the solution in the AI client. Use MCP tools only as safe primitives for project scan/read/write/import/generation jobs/runtime validation. Start with godot_doctor, godot_project_scan, and godot_check_errors, then follow the ${workflow} workflow.${researchLine}`;
 }
 
 function toolAgentUse(name) {
@@ -1849,6 +1932,9 @@ function usageTemplate(name) {
 
 function suggestToolChain(task) {
   const text = String(task).toLowerCase();
+  if (isComplexMechanicTask(text)) {
+    return ["godot_agent_instructions/workflow:research_mechanic", "external research: GitHub + YouTube + docs/web", "godot_doctor", "godot_project_scan", "dry_run planned writes", "godot_check_errors", "runtime console/screenshot validation when applicable"];
+  }
   if (
     text.includes("first person") ||
     text.includes("first-person") ||

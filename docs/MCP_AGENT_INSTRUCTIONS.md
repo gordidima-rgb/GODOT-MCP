@@ -28,6 +28,7 @@ Codex, Claude, or another AI client should:
 
 - understand the user's goal;
 - choose the Godot 4 scene, node, script, asset, and validation workflow;
+- research complex or unfamiliar mechanics on GitHub, YouTube, official Godot docs, and credible web sources before implementing;
 - write GDScript and scene content using project context;
 - decide when to use third-person, first-person, asset, bridge, debug, or visual-check workflow;
 - inspect tool results and choose the next safe action;
@@ -91,6 +92,35 @@ godot_read_scene
 godot_check_errors
 ```
 
+### Complex Or Unfamiliar Mechanics
+
+Use this when the user asks for a complex gameplay mechanic, advanced system, or anything the AI client is not already confident implementing well.
+
+The AI client must research before implementation:
+
+- search GitHub for Godot projects, demos, addons, and reusable patterns;
+- search YouTube for implementation videos and gameplay breakdowns;
+- check official Godot docs and credible Godot articles;
+- prefer Godot 4.x examples;
+- compare at least two useful sources when possible;
+- record source links, Godot version, and license notes;
+- do not copy incompatible or unclear-license code verbatim;
+- adapt the pattern to this project instead of pasting a random external script.
+
+```text
+godot_agent_instructions({ "workflow": "research_mechanic", "task": "<complex mechanic>" })
+external research: GitHub + YouTube + Godot docs/web
+godot_doctor
+godot_project_scan
+dry-run planned writes
+implement adapted Godot 4 pattern
+godot_check_errors
+run the game and inspect the console when gameplay scripts changed
+capture a screenshot when visible scene placement changed
+```
+
+If the AI client has no internet access, it must say that clearly and ask whether to continue from local knowledge only.
+
 ### Character Prototypes
 
 Generic character prototype requests use Jeh3no third-person data. Explicit first-person/FPS requests use Jeh3no first-person data.
@@ -150,4 +180,5 @@ If Godot CLI or the editor bridge is unavailable, report that limitation clearly
 
 ```text
 Use instruction-first Godot MCP mode. You are responsible for planning, Godot 4 API choices, GDScript, scene structure, validation decisions, and user-facing explanations. Use MCP tools only as safe project primitives for scan/read/write/import/generation jobs/runtime validation. Start with godot_agent_instructions for my task, then godot_doctor, godot_project_scan, and godot_check_errors. Use dry_run before larger writes. Keep provider none unless I explicitly configure .env. If gameplay scripts changed, run the game and inspect the console. If visible scene objects changed, capture a screenshot and inspect placement.
+If I ask for a complex or unfamiliar gameplay mechanic, search GitHub, YouTube, official Godot docs, and credible web sources first, compare useful implementations, note source links/licenses, then implement the best Godot 4 adaptation.
 ```

@@ -7,6 +7,7 @@ Project root: the folder that contains `project.godot`.
 Work with this Godot 4.x project through the safe MCP tools.
 Use `docs/MCP_CAPABILITIES.md` as the full tool map for Codex, Claude, and any other MCP client.
 Use `docs/MCP_AGENT_INSTRUCTIONS.md` for instruction-first mode: the AI client plans and writes Godot-specific content; MCP JS tools are safe primitives for scan/read/write/import/generation/validation.
+If the user asks for a complex or unfamiliar mechanic, first research implementations on GitHub, YouTube, official Godot docs, and credible web sources, compare sources/licenses, then implement the best Godot 4 adaptation.
 First inspect the project, list scenes and scripts, then make small scoped changes.
 Do not delete existing files unless the user explicitly asks for it.
 When creating scripts, add short comments that help a beginner understand the code.
@@ -26,6 +27,7 @@ If image or 3D generation providers are set to none, save generation jobs instea
 
 - Discovery/setup: `godot_help`, `godot_doctor`, `godot_codex_config`.
 - Instruction-first guidance: `godot_agent_instructions`.
+- Complex mechanic research: use `godot_agent_instructions` with `workflow: "research_mechanic"` before implementing unfamiliar advanced gameplay systems.
 - Bridge: `godot_bridge_status`, `godot_editor_scene_snapshot`, `godot_capture_editor_viewport`.
 - Inspect: `godot_project_scan`, `godot_search_project`, `godot_list_scenes`, `godot_list_scripts`, `godot_read_scene`, `godot_check_errors`.
 - Edit: `godot_create_scene`, `godot_add_node`, `godot_update_node`, `godot_attach_script`, `godot_create_script`, `godot_create_input_action`, `godot_create_autoload`, `godot_create_material`.

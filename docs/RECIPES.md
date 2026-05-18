@@ -14,6 +14,12 @@ Run godot_doctor, then godot_project_scan. Tell me what is safe to change first.
 
 For larger tasks, ask the AI client to call `godot_agent_instructions` with your task before it writes anything.
 
+For complex or unfamiliar mechanics, ask:
+
+```text
+Use godot_agent_instructions with workflow research_mechanic. Search GitHub, YouTube, Godot docs, and credible web sources first, compare useful implementations and licenses, then implement the best Godot 4 adaptation.
+```
+
 Use this before bigger edits. It checks the project root, server version, Node.js, `project.godot`, Godot CLI, the editor bridge, `.env`, providers, and expected folders.
 
 ## 2. Create A Small Scene Safely

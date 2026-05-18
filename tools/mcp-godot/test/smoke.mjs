@@ -124,6 +124,25 @@ try {
     agentInstructions.mcpPrimitiveUse.some((item) => item.includes("Scan/search/read")),
     "godot_agent_instructions must describe MCP tools as primitives"
   );
+  const agentInstructionTool = listed.tools.find((tool) => tool.name === "godot_agent_instructions");
+  assert(
+    agentInstructionTool.inputSchema.properties.workflow.enum.includes("research_mechanic"),
+    "godot_agent_instructions must expose the research_mechanic workflow"
+  );
+  const researchMechanic = await call("godot_agent_instructions", {
+    client: "codex",
+    task: "implement a complex grappling hook mechanic",
+    detail: "full"
+  });
+  assert(researchMechanic.workflow === "research_mechanic", "complex unfamiliar mechanics must infer research_mechanic workflow");
+  assert(
+    researchMechanic.workflowInstructions.steps.some((step) => step.includes("GitHub") && step.includes("YouTube")),
+    "research_mechanic workflow must require online implementation research"
+  );
+  assert(
+    researchMechanic.readyPrompt.includes("source links and license notes"),
+    "research_mechanic prompt must require source links and license notes"
+  );
 
   const generationHelp = await call("godot_help", { category: "generation" });
   assert(generationHelp.generation.realAdapters.includes("meshy text-to-3d"), "generation help must include Meshy model adapter");
