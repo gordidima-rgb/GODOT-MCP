@@ -2,6 +2,8 @@
 
 This project has a local Godot MCP server in `tools/mcp-godot/`. It is designed as a safe base first: scan, scene/script/node operations, imports, and validation before any real asset generation.
 
+For Codex, Claude, and other MCP clients, the full capability map is `docs/MCP_CAPABILITIES.md`.
+
 ## Current Project Scan Notes
 
 - `project.godot` is in the project root.
@@ -78,11 +80,17 @@ After this, `godot_check_errors` can run a real headless editor check and `godot
 
 ## Available MCP Tools
 
+Use `docs/MCP_CAPABILITIES.md` as the canonical Codex/Claude tool map. This setup page keeps the short list for quick checks.
+
 - `godot_help`
+- `godot_doctor`
+- `godot_codex_config`
 - `godot_bridge_status`
 - `godot_editor_scene_snapshot`
 - `godot_project_scan`
+- `godot_search_project`
 - `godot_list_scenes`
+- `godot_list_scripts`
 - `godot_read_scene`
 - `godot_create_scene`
 - `godot_add_node`
@@ -101,6 +109,8 @@ After this, `godot_check_errors` can run a real headless editor check and `godot
 - `godot_generate_texture`
 - `godot_import_3d_model`
 - `godot_generate_3d_model`
+- `godot_list_generation_jobs`
+- `godot_update_generation_job_status`
 - `godot_run_project`
 - `godot_runtime_status`
 - `godot_stop_project`
@@ -266,7 +276,7 @@ The same dock has a small instruction workspace:
 3. Press `Save instruction` to write `docs/AI_AGENT_INSTRUCTIONS.md`.
 4. Press `Save client setup` to write `docs/AI_CLIENT_SETUP.md`.
 
-This lets you prepare a reusable prompt and client setup notes without leaving Godot. The saved files are plain Markdown, so they can be reviewed before giving them to any AI client.
+This lets you prepare a reusable prompt and client setup notes without leaving Godot. The saved files are plain Markdown, and they point Codex, Claude, or another MCP client back to `docs/MCP_CAPABILITIES.md` before tool selection.
 
 ## Editor Chat Panel
 

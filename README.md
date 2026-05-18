@@ -8,7 +8,7 @@ Godot MCP AI Bridge for safe AI-assisted Godot 4.x development.
 
 Current version: `0.4.0`
 
-This repository gives Codex or another MCP-capable AI client a small, safe API for working inside a Godot 4.x project. The MCP server can inspect files, create small Godot resources, queue generation jobs, and call a local Godot EditorPlugin bridge when richer editor context is needed.
+This repository gives Codex, Claude, or another MCP-capable AI client a small, safe API for working inside a Godot 4.x project. The MCP server can inspect files, create small Godot resources, queue generation jobs, and call a local Godot EditorPlugin bridge when richer editor context is needed.
 
 The goal is conservative automation:
 
@@ -47,6 +47,8 @@ The installer copies the Godot editor plugin and the local MCP server into your 
 ```text
 Run godot_doctor, then godot_project_scan.
 ```
+
+For Codex, Claude, or any MCP-capable client, use `docs/MCP_CAPABILITIES.md` as the full tool map.
 
 If you already cloned this repository, you can run the installer locally from the project root:
 
@@ -141,6 +143,8 @@ This project currently contains both `Assets/` and `assets/`. The doctor reports
 - It cannot bypass `GODOT_MCP_READ_ONLY=true`.
 
 ## MCP Tools
+
+The canonical Codex/Claude tool map lives in `docs/MCP_CAPABILITIES.md`. Keep this table as the quick reference and use `godot_help` for live workflow suggestions.
 
 | Tool | Category | Mutates project | Purpose |
 | --- | --- | --- | --- |
@@ -263,7 +267,7 @@ The installer downloads `addons/PlayerCharacter` from [Jeh3no/Godot-Third-Person
 
 ## First-Person Character Prototypes
 
-For first-person, FPS, or "от первого лица" prototypes, do not create a plain capsule as the player. Use:
+For first-person or FPS prototypes, do not create a plain capsule as the player. Use:
 
 ```text
 godot_install_first_person_controller
@@ -293,6 +297,7 @@ The GitHub Actions workflow in `.github/workflows/ci.yml` runs the same checks.
 Beginner workflows live in:
 
 - `docs/RECIPES.md`
+- `docs/MCP_CAPABILITIES.md`
 - `docs/MCP_GODOT_SETUP.md`
 - `docs/GODOT_MCP_RESEARCH.md`
 - `docs/AI_AGENT_INSTRUCTIONS.md`

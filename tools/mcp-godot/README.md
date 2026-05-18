@@ -4,6 +4,8 @@ This is a local stdio MCP server for the current Godot 4 project. It works witho
 
 ## What It Can Do
 
+For Codex, Claude, and other MCP clients, the full tool map lives in [`../../docs/MCP_CAPABILITIES.md`](../../docs/MCP_CAPABILITIES.md).
+
 - Scan the project with scenes, scripts, resources, textures, materials, and models.
 - List `.tscn` and `.scn` scenes.
 - Read text `.tscn` scenes and summarize node structure.
@@ -21,10 +23,14 @@ This is a local stdio MCP server for the current Godot 4 project. It works witho
 ## Tool Names
 
 - `godot_help`
+- `godot_doctor`
+- `godot_codex_config`
 - `godot_bridge_status`
 - `godot_editor_scene_snapshot`
 - `godot_project_scan`
+- `godot_search_project`
 - `godot_list_scenes`
+- `godot_list_scripts`
 - `godot_read_scene`
 - `godot_create_scene`
 - `godot_add_node`
@@ -43,6 +49,8 @@ This is a local stdio MCP server for the current Godot 4 project. It works witho
 - `godot_generate_texture`
 - `godot_import_3d_model`
 - `godot_generate_3d_model`
+- `godot_list_generation_jobs`
+- `godot_update_generation_job_status`
 - `godot_run_project`
 - `godot_runtime_status`
 - `godot_stop_project`
@@ -79,7 +87,7 @@ Use `godot_help` with `category: "debug"` for mandatory validation rules:
 
 For third-person or character prototype tasks, use `godot_install_third_person_controller` and `godot_create_third_person_prototype`. These tools use Jeh3no's `addons/PlayerCharacter` controller and avoid capsule-only player placeholders.
 
-For first-person, FPS, or "от первого лица" prototype tasks, use `godot_install_first_person_controller` and `godot_create_first_person_prototype`. These tools use scenes, scripts, input defaults, and assets from `Jeh3no/Godot-Advanced-State-Machine-First-Person-Controller`, keep available upstream license files, and add Jeh3no attribution to generated prototype scene metadata.
+For first-person or FPS prototype tasks, use `godot_install_first_person_controller` and `godot_create_first_person_prototype`. These tools use scenes, scripts, input defaults, and assets from `Jeh3no/Godot-Advanced-State-Machine-First-Person-Controller`, keep available upstream license files, and add Jeh3no attribution to generated prototype scene metadata.
 
 ## Run A Smoke Test
 

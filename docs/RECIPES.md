@@ -1,10 +1,12 @@
 # GODOT-MCP Beginner Recipes
 
-These recipes assume Codex is connected to the local MCP server and the project is a Godot 4.x project.
+These recipes assume Codex, Claude, or another MCP client is connected to the local MCP server and the project is a Godot 4.x project.
+
+For the full tool map, start with `docs/MCP_CAPABILITIES.md`.
 
 ## 1. Check The Project
 
-Ask Codex:
+Ask Codex or Claude:
 
 ```text
 Run godot_doctor, then godot_project_scan. Tell me what is safe to change first.
@@ -14,7 +16,7 @@ Use this before bigger edits. It checks the project root, server version, Node.j
 
 ## 2. Create A Small Scene Safely
 
-Ask Codex:
+Ask Codex or Claude:
 
 ```text
 Dry-run a new scene at scenes/example.tscn with a Node2D root named Example, then show plannedChanges.
@@ -30,7 +32,7 @@ The dry run should not change files.
 
 ## 3. Add A Beginner Script
 
-Ask Codex:
+Ask Codex or Claude:
 
 ```text
 Create scripts/example.gd extending Node2D with a short beginner-friendly comment, then attach it to scenes/example.tscn.
@@ -40,7 +42,7 @@ The script tool refuses to overwrite existing files unless `overwrite: true` is 
 
 ## 4. Add An Input Action
 
-Ask Codex:
+Ask Codex or Claude:
 
 ```text
 Create an input action named jump with a Space key event, then run godot_check_errors.
@@ -50,7 +52,7 @@ This edits only the `[input]` section of `project.godot`.
 
 ## 5. Create An Autoload
 
-Ask Codex:
+Ask Codex or Claude:
 
 ```text
 Create scripts/game_state.gd, then add it as an autoload named GameState.
@@ -60,7 +62,7 @@ Autoloads are written to the `[autoload]` section of `project.godot`.
 
 ## 6. Create A Simple Material
 
-Ask Codex:
+Ask Codex or Claude:
 
 ```text
 Create a blue StandardMaterial3D at assets/materials/blue_test.tres.
@@ -70,7 +72,7 @@ Use text `.tres` or `.material` resources so they are easy to review.
 
 ## 7. Create A Third-Person Character Prototype
 
-Ask Codex:
+Ask Codex or Claude:
 
 ```text
 Install the third-person PlayerCharacter controller and create a prototype scene.
@@ -80,7 +82,7 @@ Codex should use `godot_install_third_person_controller` and `godot_create_third
 
 ## 8. Create A First-Person Character Prototype
 
-Ask Codex:
+Ask Codex or Claude:
 
 ```text
 Install the first-person controller from Jeh3no and create an FPS prototype scene.
@@ -90,7 +92,7 @@ Codex should use `godot_install_first_person_controller` and `godot_create_first
 
 ## 9. Queue Asset Generation Without A Provider
 
-Ask Codex:
+Ask Codex or Claude:
 
 ```text
 Queue a sprite prompt with provider none, then list generation jobs.
@@ -102,7 +104,7 @@ Provider `none` saves JSON under `generation_jobs/` instead of calling a real se
 
 In the Godot `AI MCP Bridge` dock, open `3D model providers`, choose `meshy` or `tripo`, paste the API key, and press `Save 3D keys`. The dock writes only to local `.env`; do not put real keys in source files.
 
-Ask Codex:
+Ask Codex or Claude:
 
 ```text
 Use godot_generate_3d_model with provider meshy to create a low-poly sci-fi crate at assets/generated/models/sci_fi_crate.glb.
@@ -112,7 +114,7 @@ Meshy supports `quality: "preview"` for a fast draft and `quality: "refine"` for
 
 ## 11. Mark A Generation Job Done
 
-Ask Codex:
+Ask Codex or Claude:
 
 ```text
 List generation jobs, pick the newest queued image job, and mark it done with a short note.
@@ -122,7 +124,7 @@ This only updates the selected job JSON.
 
 ## 11. Search Before Editing
 
-Ask Codex:
+Ask Codex or Claude:
 
 ```text
 Search the project for third_person_capsule and summarize every file that mentions it.
@@ -134,7 +136,7 @@ Use search before renaming, moving, or touching shared scripts.
 
 In Godot, enable `AI MCP Bridge`, choose a port, and press `Start`.
 
-Then ask Codex:
+Then ask Codex or Claude:
 
 ```text
 Run godot_bridge_status and godot_editor_scene_snapshot.

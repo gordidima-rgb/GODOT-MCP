@@ -291,8 +291,8 @@ func _refresh_quick_guide() -> void:
     _quick_guide_label.text = "\n".join([
         "Mini guide: 1, 2, 3",
         "1. Bridge: " + bridge_step + ".",
-        "2. Click Run Doctor, then Copy Codex config.",
-        "3. Paste the TOML into Codex config, restart Codex, then ask: run godot_doctor.",
+        "2. Click Run Doctor, then Copy Codex config or save client setup for Claude.",
+        "3. Restart the AI client, then ask it to use docs/MCP_CAPABILITIES.md and run godot_doctor.",
         "3D models: choose meshy, tripo, or custom_http below and save keys to .env.",
         "Optional: for local chat, keep provider none and press Queue, or set AI_CHAT_* in .env and press Reload .env."
     ])
@@ -451,6 +451,7 @@ func _on_save_client_setup_pressed() -> void:
     content += "- Use Godot 4.x APIs only.\n"
     content += "- Keep all file changes inside the project root.\n"
     content += "- Never write real API keys to source files or logs.\n"
+    content += "- Use docs/MCP_CAPABILITIES.md as the MCP tool map for Codex, Claude, and other clients.\n"
     content += "- Start with project scan, scene list, and error checks before larger edits.\n"
     var result := _write_text_file(CLIENT_SETUP_PATH, content)
     if bool(result.get("ok", false)):
@@ -536,6 +537,7 @@ func _current_port() -> int:
 func _default_instruction_text() -> String:
     var lines := [
         "Work with this Godot 4.x project through the safe MCP tools.",
+        "Use docs/MCP_CAPABILITIES.md or godot_help as the MCP tool map before choosing tools.",
         "First inspect the project, list scenes and scripts, then make small scoped changes.",
         "Do not delete existing files unless the user explicitly asks for it.",
         "When creating scripts, add short comments that help a beginner understand the code.",
@@ -547,7 +549,15 @@ func _client_setup_text(client_name: String) -> String:
     var project_root := _project_root_for_docs()
     match client_name:
         "Codex":
-            return "Use this MCP server from Codex:\n\n```toml\n" + _codex_config_text() + "```\n\nThen restart Codex and ask it to run `godot_doctor` first."
+            return "\n".join([
+                "Use this MCP server from Codex:",
+                "",
+                "```toml",
+                _codex_config_text() + "```",
+                "",
+                "Then restart Codex and ask it to use `docs/MCP_CAPABILITIES.md` as the tool map.",
+                "First calls: `godot_help`, `godot_doctor`, `godot_project_scan`, `godot_check_errors`."
+            ])
         "Visual Studio / VS Code":
             return "\n".join([
                 "Use the MCP server with a Visual Studio or VS Code extension that supports MCP stdio servers.",
@@ -555,6 +565,7 @@ func _client_setup_text(client_name: String) -> String:
                 "Server command:",
                 "`node " + project_root + "/tools/mcp-godot/src/server.mjs --project-root " + project_root + "`",
                 "",
+                "Use `docs/MCP_CAPABILITIES.md` as the tool map.",
                 "Keep provider keys in `.env`; do not paste secrets into editor prompts."
             ])
         "Claude":
@@ -564,7 +575,8 @@ func _client_setup_text(client_name: String) -> String:
                 "Server command:",
                 "`node " + project_root + "/tools/mcp-godot/src/server.mjs --project-root " + project_root + "`",
                 "",
-                "After reconnecting, start with `godot_help` and `godot_project_scan`."
+                "After reconnecting, ask Claude to use `docs/MCP_CAPABILITIES.md` as the tool map.",
+                "First calls: `godot_help`, `godot_doctor`, `godot_project_scan`, `godot_check_errors`."
             ])
         _:
             return "Select a supported AI client."

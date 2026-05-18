@@ -1,6 +1,8 @@
 # AI Client Setup
 
-Use this MCP server from Codex:
+Use `docs/MCP_CAPABILITIES.md` as the shared tool map for Codex, Claude, and any other MCP-capable client.
+
+## Codex
 
 ```toml
 [mcp_servers.godotMCP]
@@ -12,11 +14,47 @@ env = { GODOT_PROJECT_ROOT = "<PROJECT_ROOT>", GODOT_MCP_PORT = "8765" }
 
 Replace `<PROJECT_ROOT>` with the folder that contains `project.godot`. If you used the PowerShell installer, copy the ready block from `godot-mcp.codex.toml` instead.
 
-Then restart Codex and ask it to run `godot_doctor` first.
+Then restart Codex and ask it to run:
+
+```text
+godot_help category overview
+godot_doctor
+godot_project_scan
+godot_check_errors
+```
+
+## Claude Desktop
+
+Add the same local stdio server to the Claude Desktop MCP config. Replace `<PROJECT_ROOT>` with the folder that contains `project.godot`.
+
+```json
+{
+  "mcpServers": {
+    "godotMCP": {
+      "command": "node",
+      "args": [
+        "<PROJECT_ROOT>/tools/mcp-godot/src/server.mjs",
+        "--project-root",
+        "<PROJECT_ROOT>"
+      ],
+      "env": {
+        "GODOT_PROJECT_ROOT": "<PROJECT_ROOT>",
+        "GODOT_MCP_PORT": "8765"
+      }
+    }
+  }
+}
+```
+
+After reconnecting Claude, ask it to read `docs/MCP_CAPABILITIES.md` and start with `godot_help`, `godot_doctor`, `godot_project_scan`, and `godot_check_errors`.
 
 ## Shared Rules
 
 - Use Godot 4.x APIs only.
 - Keep all file changes inside the project root.
+- Use `res://` paths for Godot-facing references.
 - Never write real API keys to source files or logs.
 - Start with project scan, scene list, and error checks before larger edits.
+- Use dry runs before larger scene/script writes.
+- If gameplay scripts changed, run the game or target scene and inspect the Godot console.
+- If visible scene objects changed, capture a screenshot and inspect placement.
