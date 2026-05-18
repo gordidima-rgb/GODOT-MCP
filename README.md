@@ -6,7 +6,7 @@
 
 Godot MCP AI Bridge for safe AI-assisted Godot 4.x development.
 
-Current version: `0.3.1`
+Current version: `0.3.2`
 
 This repository gives Codex or another MCP-capable AI client a small, safe API for working inside a Godot 4.x project. The MCP server can inspect files, create small Godot resources, queue generation jobs, and call a local Godot EditorPlugin bridge when richer editor context is needed.
 
@@ -162,6 +162,8 @@ This project currently contains both `Assets/` and `assets/`. The doctor reports
 | `godot_create_input_action` | edit | Yes | Add or update an input action in `project.godot`. |
 | `godot_create_autoload` | edit | Yes | Add or update a script autoload in `project.godot`. |
 | `godot_create_material` | assets | Yes | Create a simple text `.tres` or `.material` resource. |
+| `godot_install_third_person_controller` | assets | Yes | Install Jeh3no `addons/PlayerCharacter` and sibling character assets for real third-person prototypes. |
+| `godot_create_third_person_prototype` | edit | Yes | Create a starter scene that instances the installed PlayerCharacter instead of a capsule placeholder. |
 | `godot_import_image` | assets | Yes | Copy a project-local image into an asset folder. |
 | `godot_generate_sprite` | assets | Yes | Generate or queue a sprite prompt. Provider `none` writes a job file. |
 | `godot_generate_texture` | assets | Yes | Generate or queue a texture prompt. Provider `none` writes a job file. |
@@ -224,6 +226,17 @@ Real keys must live in `.env` or environment variables, never in source files.
 | Generation did not create an image/model | Check `generation_jobs/`; provider `none` queues jobs by design. |
 | A `.scn` scene cannot be edited | Use text `.tscn` scenes for file-based edits or use the editor bridge. |
 | `.env` is missing | Copy `.env.example` to `.env` and fill only the settings you need. |
+
+## Third-Person Character Prototypes
+
+For third-person or character prototype scenes, do not create a plain capsule as the player. Use:
+
+```text
+godot_install_third_person_controller
+godot_create_third_person_prototype
+```
+
+The installer downloads `addons/PlayerCharacter` from [Jeh3no/Godot-Third-Person-Controller](https://github.com/Jeh3no/Godot-Third-Person-Controller/tree/main/addons/PlayerCharacter) and, by default, also copies sibling `addons/Arts` assets so the model, animations, sounds, and particles stay together.
 
 ## Validation
 

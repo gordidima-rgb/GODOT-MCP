@@ -89,6 +89,11 @@ After this, `godot_check_errors` can run a real headless editor check and `godot
 - `godot_update_node`
 - `godot_attach_script`
 - `godot_create_script`
+- `godot_create_input_action`
+- `godot_create_autoload`
+- `godot_create_material`
+- `godot_install_third_person_controller`
+- `godot_create_third_person_prototype`
 - `godot_import_image`
 - `godot_generate_sprite`
 - `godot_generate_texture`
@@ -109,6 +114,12 @@ Runtime tools:
 - `godot_capture_screenshot` uses Godot Movie Maker with `--write-movie` and `--quit-after` to save a PNG screenshot/sequence inside `docs/assets/screenshots/runtime/`.
 - `godot_editor_scene_snapshot` asks the Godot dock bridge what scene is currently open and returns the node tree.
 - `godot_capture_editor_viewport` saves the current 2D or 3D editor viewport to `docs/assets/screenshots/editor/`.
+
+Character prototype tools:
+
+- `godot_install_third_person_controller` installs Jeh3no `addons/PlayerCharacter` from GitHub and copies sibling `addons/Arts` dependencies by default.
+- `godot_create_third_person_prototype` creates a starter 3D scene that instances `res://addons/PlayerCharacter/...` instead of creating a simple capsule placeholder.
+- Use `source_path` when you already have a project-local checkout of `Jeh3no/Godot-Third-Person-Controller` and want an offline install.
 
 ## Provider Defaults
 

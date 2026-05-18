@@ -68,7 +68,17 @@ Create a blue StandardMaterial3D at assets/materials/blue_test.tres.
 
 Use text `.tres` or `.material` resources so they are easy to review.
 
-## 7. Queue Asset Generation Without A Provider
+## 7. Create A Third-Person Character Prototype
+
+Ask Codex:
+
+```text
+Install the third-person PlayerCharacter controller and create a prototype scene.
+```
+
+Codex should use `godot_install_third_person_controller` and `godot_create_third_person_prototype`. Do not accept a plain capsule as the player for third-person or character prototype work.
+
+## 8. Queue Asset Generation Without A Provider
 
 Ask Codex:
 
@@ -78,7 +88,7 @@ Queue a sprite prompt with provider none, then list generation jobs.
 
 Provider `none` saves JSON under `generation_jobs/` instead of calling a real service.
 
-## 8. Mark A Generation Job Done
+## 9. Mark A Generation Job Done
 
 Ask Codex:
 
@@ -88,7 +98,7 @@ List generation jobs, pick the newest queued image job, and mark it done with a 
 
 This only updates the selected job JSON.
 
-## 9. Search Before Editing
+## 10. Search Before Editing
 
 Ask Codex:
 
@@ -98,7 +108,7 @@ Search the project for third_person_capsule and summarize every file that mentio
 
 Use search before renaming, moving, or touching shared scripts.
 
-## 10. Use The Editor Bridge
+## 11. Use The Editor Bridge
 
 In Godot, enable `AI MCP Bridge`, choose a port, and press `Start`.
 

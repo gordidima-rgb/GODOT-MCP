@@ -10,6 +10,7 @@ This is a local stdio MCP server for the current Godot 4 project. It works witho
 - Create `.tscn` scenes with safe root node types.
 - Add/update nodes in text `.tscn` scenes.
 - Create and attach GDScript files.
+- Install Jeh3no PlayerCharacter and create third-person character prototype scenes without capsule placeholders.
 - Import project-local images and 3D models.
 - Generate or queue sprite/texture/model jobs through provider interfaces.
 - Run, stop, and check the project with Godot CLI when available.
@@ -29,6 +30,11 @@ This is a local stdio MCP server for the current Godot 4 project. It works witho
 - `godot_update_node`
 - `godot_attach_script`
 - `godot_create_script`
+- `godot_create_input_action`
+- `godot_create_autoload`
+- `godot_create_material`
+- `godot_install_third_person_controller`
+- `godot_create_third_person_prototype`
 - `godot_import_image`
 - `godot_generate_sprite`
 - `godot_generate_texture`
@@ -50,6 +56,8 @@ godot_bridge_status
 ```
 
 Set `GODOT_MCP_READ_ONLY=true` to expose the same tool list while blocking write/run/generation tools at execution time.
+
+For third-person or character prototype tasks, use `godot_install_third_person_controller` and `godot_create_third_person_prototype`. These tools use Jeh3no's `addons/PlayerCharacter` controller and avoid capsule-only player placeholders.
 
 ## Run A Smoke Test
 

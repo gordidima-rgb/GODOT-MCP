@@ -80,6 +80,8 @@ try {
     "godot_create_input_action",
     "godot_create_autoload",
     "godot_create_material",
+    "godot_install_third_person_controller",
+    "godot_create_third_person_prototype",
     "godot_import_image",
     "godot_generate_sprite",
     "godot_generate_texture",
@@ -100,6 +102,12 @@ try {
   const help = await call("godot_help", { category: "coverage" });
   assert(help.coverage.strong.some((item) => item.includes("project scan")), "godot_help must expose coverage info");
 
+  const thirdPersonHelp = await call("godot_help", { task: "create a third person character prototype scene" });
+  assert(
+    thirdPersonHelp.suggestedChain.includes("godot_install_third_person_controller"),
+    "third-person prototype tasks must recommend installing the real PlayerCharacter controller"
+  );
+
   const bridge = await call("godot_bridge_status", { timeout_ms: 250 });
   assert(bridge.ok === false || bridge.connected === true, "godot_bridge_status must return a structured status");
 
@@ -108,7 +116,7 @@ try {
 
   const doctor = await call("godot_doctor", { timeout_ms: 250 });
   assert(doctor.projectRoot === fixtureRoot, "godot_doctor must report the fixture project root");
-  assert(doctor.serverVersion === "0.3.1", "godot_doctor must report server version");
+  assert(doctor.serverVersion === "0.3.2", "godot_doctor must report server version");
   assert(doctor.projectGodot.exists === true, "godot_doctor must see project.godot");
 
   const codexConfig = await call("godot_codex_config", {});
@@ -209,6 +217,41 @@ try {
   });
   assert(material.ok, "godot_create_material must write a material resource");
 
+  const controller = await call("godot_install_third_person_controller", {
+    source_path: "third_person_source",
+    include_dependencies: true
+  });
+  assert(controller.ok, "godot_install_third_person_controller must install from a project-local source");
+  assert(
+    await exists(path.join(fixtureRoot, "addons", "PlayerCharacter", "player_character.tscn")),
+    "third-person controller install must copy PlayerCharacter scene files"
+  );
+  assert(
+    await exists(path.join(fixtureRoot, "addons", "Arts", "plush.txt")),
+    "third-person controller install must copy sibling character asset dependencies by default"
+  );
+
+  const prototype = await call("godot_create_third_person_prototype", {
+    scene_path: "scenes/third_person_controller_prototype.tscn",
+    source_path: "third_person_source"
+  });
+  assert(prototype.ok, "godot_create_third_person_prototype must create a playable prototype scene");
+  assert(
+    prototype.characterScene === "res://addons/PlayerCharacter/player_character.tscn",
+    "prototype scene must instance the upstream PlayerCharacter scene instead of a simple capsule"
+  );
+  const prototypeText = await fs.readFile(path.join(fixtureRoot, "scenes", "third_person_controller_prototype.tscn"), "utf8");
+  assert(prototypeText.includes("instance=ExtResource"), "prototype scene must instance the PlayerCharacter PackedScene");
+  assert(
+    prototypeText.includes("res://addons/PlayerCharacter/player_character.tscn"),
+    "prototype scene must reference the installed PlayerCharacter scene"
+  );
+  const projectTextAfterPrototype = await fs.readFile(path.join(fixtureRoot, "project.godot"), "utf8");
+  assert(
+    projectTextAfterPrototype.includes("play_char_move_forward_action"),
+    "prototype creation must add the PlayerCharacter input actions"
+  );
+
   const image = await call("godot_import_image", {
     source_path: "icon.svg",
     target_path: "assets/imported/icon.svg",
@@ -257,8 +300,8 @@ try {
   assert(updatedJob.status === "done", "godot_update_generation_job_status must update status");
 
   const scan = await call("godot_project_scan", {});
-  assert(scan.counts.scenes === 1, "project_scan must see the created scene");
-  assert(scan.counts.scripts === 1, "project_scan must see the created script");
+  assert(scan.counts.scenes >= 2, "project_scan must see created and installed scenes");
+  assert(scan.counts.scripts >= 1, "project_scan must see the created script");
   assert(scan.counts.models === 2, "project_scan must see source and imported models");
 
   const scenes = await call("godot_list_scenes", {});
@@ -374,6 +417,24 @@ async function resetFixture() {
   await fs.writeFile(path.join(resolved, "icon.svg"), '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"></svg>\n', "utf8");
   await fs.mkdir(path.join(resolved, "source_models"), { recursive: true });
   await fs.writeFile(path.join(resolved, "source_models", "cube.glb"), "glb-fixture\n", "utf8");
+  await fs.mkdir(path.join(resolved, "third_person_source", "addons", "PlayerCharacter"), { recursive: true });
+  await fs.mkdir(path.join(resolved, "third_person_source", "addons", "Arts"), { recursive: true });
+  await fs.writeFile(
+    path.join(resolved, "third_person_source", "addons", "PlayerCharacter", "player_character.tscn"),
+    [
+      '[gd_scene format=3]',
+      '',
+      '[node name="PlayerCharacter" type="CharacterBody3D"]',
+      ''
+    ].join("\n"),
+    "utf8"
+  );
+  await fs.writeFile(
+    path.join(resolved, "third_person_source", "addons", "PlayerCharacter", "controller.gd"),
+    'extends CharacterBody3D\n',
+    "utf8"
+  );
+  await fs.writeFile(path.join(resolved, "third_person_source", "addons", "Arts", "plush.txt"), "fake character art dependency\n", "utf8");
 }
 
 async function exists(abs) {
