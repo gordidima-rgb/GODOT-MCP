@@ -78,7 +78,17 @@ Install the third-person PlayerCharacter controller and create a prototype scene
 
 Codex should use `godot_install_third_person_controller` and `godot_create_third_person_prototype`. Do not accept a plain capsule as the player for third-person or character prototype work.
 
-## 8. Queue Asset Generation Without A Provider
+## 8. Create A First-Person Character Prototype
+
+Ask Codex:
+
+```text
+Install the first-person controller from Jeh3no and create an FPS prototype scene.
+```
+
+Codex should use `godot_install_first_person_controller` and `godot_create_first_person_prototype`. These tools use scenes, scripts, input defaults, and assets from `Jeh3no/Godot-Advanced-State-Machine-First-Person-Controller`, preserve available upstream license files, and write Jeh3no attribution into the generated prototype scene. Do not accept a plain capsule as the player for first-person or FPS prototype work.
+
+## 9. Queue Asset Generation Without A Provider
 
 Ask Codex:
 
@@ -88,7 +98,7 @@ Queue a sprite prompt with provider none, then list generation jobs.
 
 Provider `none` saves JSON under `generation_jobs/` instead of calling a real service.
 
-## 9. Mark A Generation Job Done
+## 10. Mark A Generation Job Done
 
 Ask Codex:
 
@@ -98,7 +108,7 @@ List generation jobs, pick the newest queued image job, and mark it done with a 
 
 This only updates the selected job JSON.
 
-## 10. Search Before Editing
+## 11. Search Before Editing
 
 Ask Codex:
 
@@ -108,7 +118,7 @@ Search the project for third_person_capsule and summarize every file that mentio
 
 Use search before renaming, moving, or touching shared scripts.
 
-## 11. Use The Editor Bridge
+## 12. Use The Editor Bridge
 
 In Godot, enable `AI MCP Bridge`, choose a port, and press `Start`.
 

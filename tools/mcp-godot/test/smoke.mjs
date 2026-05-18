@@ -82,6 +82,8 @@ try {
     "godot_create_material",
     "godot_install_third_person_controller",
     "godot_create_third_person_prototype",
+    "godot_install_first_person_controller",
+    "godot_create_first_person_prototype",
     "godot_import_image",
     "godot_generate_sprite",
     "godot_generate_texture",
@@ -108,6 +110,12 @@ try {
     "third-person prototype tasks must recommend installing the real PlayerCharacter controller"
   );
 
+  const firstPersonHelp = await call("godot_help", { task: "create an FPS first person prototype scene" });
+  assert(
+    firstPersonHelp.suggestedChain.includes("godot_install_first_person_controller"),
+    "first-person prototype tasks must recommend installing Jeh3no's advanced first-person controller"
+  );
+
   const bridge = await call("godot_bridge_status", { timeout_ms: 250 });
   assert(bridge.ok === false || bridge.connected === true, "godot_bridge_status must return a structured status");
 
@@ -116,7 +124,7 @@ try {
 
   const doctor = await call("godot_doctor", { timeout_ms: 250 });
   assert(doctor.projectRoot === fixtureRoot, "godot_doctor must report the fixture project root");
-  assert(doctor.serverVersion === "0.3.2", "godot_doctor must report server version");
+  assert(doctor.serverVersion === "0.3.3", "godot_doctor must report server version");
   assert(doctor.projectGodot.exists === true, "godot_doctor must see project.godot");
 
   const codexConfig = await call("godot_codex_config", {});
@@ -250,6 +258,83 @@ try {
   assert(
     projectTextAfterPrototype.includes("play_char_move_forward_action"),
     "prototype creation must add the PlayerCharacter input actions"
+  );
+
+  const firstPersonController = await call("godot_install_first_person_controller", {
+    source_path: "first_person_source",
+    include_dependencies: true,
+    overwrite: true
+  });
+  assert(firstPersonController.ok, "godot_install_first_person_controller must install from a project-local source");
+  assert(
+    firstPersonController.repository === "Jeh3no/Godot-Advanced-State-Machine-First-Person-Controller",
+    "first-person install result must name the Jeh3no source repository"
+  );
+  assert(
+    firstPersonController.credit.includes("Jeh3no"),
+    "first-person install result must credit Jeh3no"
+  );
+  assert(
+    firstPersonController.licenseNote.includes("MIT"),
+    "first-person install result must include the upstream license note"
+  );
+  assert(
+    await exists(path.join(fixtureRoot, "addons", "PlayerCharacter", "player_character_scene.tscn")),
+    "first-person controller install must copy PlayerCharacter scene files"
+  );
+  assert(
+    await exists(path.join(fixtureRoot, "addons", "Arts", "crosshair.png")),
+    "first-person controller install must copy sibling art dependencies by default"
+  );
+  assert(
+    await exists(path.join(fixtureRoot, "addons", "LICENSE")),
+    "first-person controller install must preserve upstream addon license files when present"
+  );
+  const installedFirstPersonScene = await fs.readFile(path.join(fixtureRoot, "addons", "PlayerCharacter", "player_character_scene.tscn"), "utf8");
+  assert(
+    installedFirstPersonScene.includes("res://addons/PlayerCharacter/StateMachine/player_character_script.gd"),
+    "first-person install must normalize upstream res:// project prefix references"
+  );
+  assert(
+    !installedFirstPersonScene.includes("res://Godot-Advanced-State-Machine-First-Person-Controller/addons/"),
+    "first-person install must not leave upstream project-root references behind"
+  );
+
+  const firstPersonPrototype = await call("godot_create_first_person_prototype", {
+    scene_path: "scenes/first_person_controller_prototype.tscn",
+    source_path: "first_person_source"
+  });
+  assert(firstPersonPrototype.ok, "godot_create_first_person_prototype must create a playable prototype scene");
+  assert(
+    firstPersonPrototype.characterScene === "res://addons/PlayerCharacter/player_character_scene.tscn",
+    "first-person prototype scene must instance Jeh3no's first-person PlayerCharacter scene"
+  );
+  assert(
+    firstPersonPrototype.repository === "Jeh3no/Godot-Advanced-State-Machine-First-Person-Controller",
+    "first-person prototype result must name the Jeh3no source repository"
+  );
+  assert(
+    firstPersonPrototype.credit.includes("Jeh3no"),
+    "first-person prototype result must credit Jeh3no"
+  );
+  assert(
+    firstPersonPrototype.licenseNote.includes("MIT"),
+    "first-person prototype result must include the upstream license note"
+  );
+  const firstPersonPrototypeText = await fs.readFile(path.join(fixtureRoot, "scenes", "first_person_controller_prototype.tscn"), "utf8");
+  assert(firstPersonPrototypeText.includes("instance=ExtResource"), "first-person prototype scene must instance the PlayerCharacter PackedScene");
+  assert(
+    firstPersonPrototypeText.includes("res://addons/PlayerCharacter/player_character_scene.tscn"),
+    "first-person prototype scene must reference the installed first-person PlayerCharacter scene"
+  );
+  assert(
+    firstPersonPrototypeText.includes("Jeh3no/Godot-Advanced-State-Machine-First-Person-Controller addons/PlayerCharacter"),
+    "first-person prototype scene metadata must attribute Jeh3no data"
+  );
+  const projectTextAfterFirstPerson = await fs.readFile(path.join(fixtureRoot, "project.godot"), "utf8");
+  assert(
+    projectTextAfterFirstPerson.includes("play_char_zoom_action"),
+    "first-person prototype creation must add the first-person PlayerCharacter input actions"
   );
 
   const image = await call("godot_import_image", {
@@ -435,6 +520,28 @@ async function resetFixture() {
     "utf8"
   );
   await fs.writeFile(path.join(resolved, "third_person_source", "addons", "Arts", "plush.txt"), "fake character art dependency\n", "utf8");
+  await fs.mkdir(path.join(resolved, "first_person_source", "addons", "PlayerCharacter", "StateMachine"), { recursive: true });
+  await fs.mkdir(path.join(resolved, "first_person_source", "addons", "Arts"), { recursive: true });
+  await fs.writeFile(
+    path.join(resolved, "first_person_source", "addons", "PlayerCharacter", "player_character_scene.tscn"),
+    [
+      '[gd_scene load_steps=2 format=3]',
+      '',
+      '[ext_resource type="Script" path="res://Godot-Advanced-State-Machine-First-Person-Controller/addons/PlayerCharacter/StateMachine/player_character_script.gd" id="1_first"]',
+      '',
+      '[node name="PlayerCharacter" type="CharacterBody3D"]',
+      'script = ExtResource("1_first")',
+      ''
+    ].join("\n"),
+    "utf8"
+  );
+  await fs.writeFile(
+    path.join(resolved, "first_person_source", "addons", "PlayerCharacter", "StateMachine", "player_character_script.gd"),
+    "extends CharacterBody3D\n",
+    "utf8"
+  );
+  await fs.writeFile(path.join(resolved, "first_person_source", "addons", "Arts", "crosshair.png"), "fake png bytes\n", "utf8");
+  await fs.writeFile(path.join(resolved, "first_person_source", "addons", "LICENSE"), "MIT License fixture\n", "utf8");
 }
 
 async function exists(abs) {

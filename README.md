@@ -6,7 +6,7 @@
 
 Godot MCP AI Bridge for safe AI-assisted Godot 4.x development.
 
-Current version: `0.3.2`
+Current version: `0.3.3`
 
 This repository gives Codex or another MCP-capable AI client a small, safe API for working inside a Godot 4.x project. The MCP server can inspect files, create small Godot resources, queue generation jobs, and call a local Godot EditorPlugin bridge when richer editor context is needed.
 
@@ -164,6 +164,8 @@ This project currently contains both `Assets/` and `assets/`. The doctor reports
 | `godot_create_material` | assets | Yes | Create a simple text `.tres` or `.material` resource. |
 | `godot_install_third_person_controller` | assets | Yes | Install Jeh3no `addons/PlayerCharacter` and sibling character assets for real third-person prototypes. |
 | `godot_create_third_person_prototype` | edit | Yes | Create a starter scene that instances the installed PlayerCharacter instead of a capsule placeholder. |
+| `godot_install_first_person_controller` | assets | Yes | Install Jeh3no advanced first-person `addons/PlayerCharacter`, sibling assets, and license notes for FPS prototypes. |
+| `godot_create_first_person_prototype` | edit | Yes | Create a starter first-person scene that instances Jeh3no PlayerCharacter instead of a capsule placeholder. |
 | `godot_import_image` | assets | Yes | Copy a project-local image into an asset folder. |
 | `godot_generate_sprite` | assets | Yes | Generate or queue a sprite prompt. Provider `none` writes a job file. |
 | `godot_generate_texture` | assets | Yes | Generate or queue a texture prompt. Provider `none` writes a job file. |
@@ -237,6 +239,17 @@ godot_create_third_person_prototype
 ```
 
 The installer downloads `addons/PlayerCharacter` from [Jeh3no/Godot-Third-Person-Controller](https://github.com/Jeh3no/Godot-Third-Person-Controller/tree/main/addons/PlayerCharacter) and, by default, also copies sibling `addons/Arts` assets so the model, animations, sounds, and particles stay together.
+
+## First-Person Character Prototypes
+
+For first-person, FPS, or "от первого лица" prototypes, do not create a plain capsule as the player. Use:
+
+```text
+godot_install_first_person_controller
+godot_create_first_person_prototype
+```
+
+These tools use controller data from [Jeh3no/Godot-Advanced-State-Machine-First-Person-Controller](https://github.com/Jeh3no/Godot-Advanced-State-Machine-First-Person-Controller): scenes, scripts, input defaults, and assets from `addons/PlayerCharacter` and `addons/Arts`. The installer also keeps upstream license files when they are present, and generated prototype scenes include metadata crediting Jeh3no.
 
 ## Validation
 

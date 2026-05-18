@@ -30,6 +30,18 @@ const THIRD_PERSON_CONTROLLER_ROOTS = {
   dependencies: ["addons/Arts"],
   testMap: ["addons/Map/ Scenes"]
 };
+const FIRST_PERSON_CONTROLLER_REPO = "Jeh3no/Godot-Advanced-State-Machine-First-Person-Controller";
+const FIRST_PERSON_CONTROLLER_REF = "main";
+const FIRST_PERSON_CONTROLLER_ROOTS = {
+  player: "addons/PlayerCharacter",
+  dependencies: ["addons/Arts"],
+  testMap: ["addons/Map"]
+};
+const FIRST_PERSON_OPTIONAL_LICENSE_FILES = ["addons/LICENSE"];
+const FIRST_PERSON_UPSTREAM_RES_PREFIX = "res://Godot-Advanced-State-Machine-First-Person-Controller/addons/";
+const FIRST_PERSON_LOCAL_RES_PREFIX = "res://addons/";
+const FIRST_PERSON_CREDIT = "Uses controller, scenes, scripts, and assets from Jeh3no/Godot-Advanced-State-Machine-First-Person-Controller.";
+const FIRST_PERSON_LICENSE_NOTE = "Jeh3no's advanced first-person controller is MIT licensed upstream; keep copied LICENSE files and credit Jeh3no when using these assets.";
 const THIRD_PERSON_INPUT_ACTIONS = [
   { action: "play_char_move_forward_action", events: [{ type: "key", keycode: 87, physical_keycode: 87 }] },
   { action: "play_char_move_backward_action", events: [{ type: "key", keycode: 83, physical_keycode: 83 }] },
@@ -43,6 +55,20 @@ const THIRD_PERSON_INPUT_ACTIONS = [
   { action: "play_char_aim_cam_side_action", events: [{ type: "key", keycode: 71, physical_keycode: 71 }] },
   { action: "play_char_cam_zoom_in_action", events: [{ type: "mouse_button", button_index: 4 }, { type: "key", keycode: 86, physical_keycode: 86 }] },
   { action: "play_char_cam_zoom_out_action", events: [{ type: "mouse_button", button_index: 5 }, { type: "key", keycode: 66, physical_keycode: 66 }] }
+];
+const FIRST_PERSON_INPUT_ACTIONS = [
+  { action: "play_char_move_forward_action", events: [{ type: "key", keycode: 87, physical_keycode: 87 }, { type: "key", keycode: 4194320, physical_keycode: 4194320 }] },
+  { action: "play_char_move_backward_action", events: [{ type: "key", keycode: 83, physical_keycode: 83 }, { type: "key", keycode: 4194322, physical_keycode: 4194322 }] },
+  { action: "play_char_move_left_ation", events: [{ type: "key", keycode: 65, physical_keycode: 65 }, { type: "key", keycode: 4194319, physical_keycode: 4194319 }] },
+  { action: "play_char_move_right_action", events: [{ type: "key", keycode: 68, physical_keycode: 68 }, { type: "key", keycode: 4194321, physical_keycode: 4194321 }] },
+  { action: "play_char_run_action", events: [{ type: "key", keycode: 4194325, physical_keycode: 4194325 }] },
+  { action: "play_char_crouch_action", events: [{ type: "key", keycode: 88, physical_keycode: 88 }] },
+  { action: "play_char_jump_action", events: [{ type: "key", keycode: 32, physical_keycode: 32 }] },
+  { action: "play_char_slide_action", events: [{ type: "key", keycode: 88, physical_keycode: 88 }] },
+  { action: "play_char_dash_action", events: [{ type: "key", keycode: 4194328, physical_keycode: 4194328 }] },
+  { action: "play_char_fly_action", events: [{ type: "key", keycode: 70, physical_keycode: 70 }] },
+  { action: "play_char_zoom_action", events: [{ type: "key", keycode: 90, physical_keycode: 90 }] },
+  { action: "play_char_mouse_mode_action", events: [{ type: "key", keycode: 4194326, physical_keycode: 4194326 }] }
 ];
 const RESOURCE_PROPERTY_TYPES = new Map([
   ["script", "Script"],
@@ -68,6 +94,8 @@ const WRITE_TOOLS = new Set([
   "godot_generate_3d_model",
   "godot_install_third_person_controller",
   "godot_create_third_person_prototype",
+  "godot_install_first_person_controller",
+  "godot_create_first_person_prototype",
   "godot_run_project",
   "godot_stop_project",
   "godot_capture_screenshot",
@@ -193,6 +221,24 @@ const tools = [
     scene_path: { type: "string", default: "scenes/third_person_prototype.tscn" },
     root_name: { type: "string", default: "ThirdPersonPrototype" },
     install_controller: { type: "boolean", description: "Install PlayerCharacter first when it is missing.", default: true },
+    source_path: { type: "string", description: "Optional project-local checkout or fixture folder used for offline install." },
+    include_dependencies: { type: "boolean", default: true },
+    overwrite: { type: "boolean", default: false },
+    overwrite_input_actions: { type: "boolean", default: false },
+    dry_run: { type: "boolean", default: false }
+  }),
+  tool("godot_install_first_person_controller", "Install Jeh3no's advanced state-machine first-person PlayerCharacter controller instead of making a capsule prototype.", {
+    ref: { type: "string", description: "Git ref to download from the upstream repository.", default: FIRST_PERSON_CONTROLLER_REF },
+    source_path: { type: "string", description: "Optional project-local checkout or fixture folder containing addons/PlayerCharacter." },
+    include_dependencies: { type: "boolean", description: "Also copy sibling assets such as addons/Arts for UI/crosshair resources.", default: true },
+    include_test_map: { type: "boolean", description: "Also copy the upstream first-person test map scenes.", default: false },
+    overwrite: { type: "boolean", default: false },
+    dry_run: { type: "boolean", default: false }
+  }),
+  tool("godot_create_first_person_prototype", "Create a first-person prototype scene using Jeh3no's advanced PlayerCharacter, never a plain capsule placeholder.", {
+    scene_path: { type: "string", default: "scenes/first_person_prototype.tscn" },
+    root_name: { type: "string", default: "FirstPersonPrototype" },
+    install_controller: { type: "boolean", description: "Install Jeh3no's first-person PlayerCharacter first when it is missing.", default: true },
     source_path: { type: "string", description: "Optional project-local checkout or fixture folder used for offline install." },
     include_dependencies: { type: "boolean", default: true },
     overwrite: { type: "boolean", default: false },
@@ -396,6 +442,8 @@ async function callTool(params) {
       godot_create_material: godotCreateMaterial,
       godot_install_third_person_controller: godotInstallThirdPersonController,
       godot_create_third_person_prototype: godotCreateThirdPersonPrototype,
+      godot_install_first_person_controller: godotInstallFirstPersonController,
+      godot_create_first_person_prototype: godotCreateFirstPersonPrototype,
       godot_import_image: godotImportImage,
       godot_generate_sprite: godotGenerateSprite,
       godot_generate_texture: godotGenerateTexture,
@@ -1013,6 +1061,123 @@ async function godotCreateThirdPersonPrototype(args) {
   };
 }
 
+async function godotInstallFirstPersonController(args) {
+  const roots = firstPersonInstallRoots(args);
+  const ref = validateGitRef(args.ref ?? FIRST_PERSON_CONTROLLER_REF);
+  const plannedChanges = [
+    ...roots.map((root) => ({
+      action: "copy_directory",
+      source: args.source_path ? `${args.source_path.replace(/\/$/, "")}/${root}` : `github:${FIRST_PERSON_CONTROLLER_REPO}/${root}@${ref}`,
+      target: `res://${root}`
+    })),
+    ...FIRST_PERSON_OPTIONAL_LICENSE_FILES.map((file) => ({
+      action: "copy_optional_license",
+      source: args.source_path ? `${args.source_path.replace(/\/$/, "")}/${file}` : `github:${FIRST_PERSON_CONTROLLER_REPO}/${file}@${ref}`,
+      target: `res://${file}`
+    })),
+    { action: "normalize_res_paths", from: FIRST_PERSON_UPSTREAM_RES_PREFIX, to: FIRST_PERSON_LOCAL_RES_PREFIX }
+  ];
+
+  if (args.dry_run === true) {
+    return plannedResult(plannedChanges, {
+      repository: FIRST_PERSON_CONTROLLER_REPO,
+      ref,
+      credit: FIRST_PERSON_CREDIT,
+      licenseNote: FIRST_PERSON_LICENSE_NOTE,
+      note: "Use this before first-person or FPS prototype scenes; do not create a simple capsule placeholder."
+    });
+  }
+
+  await assertInstallTargetsWritable(roots, Boolean(args.overwrite));
+  const files = args.source_path
+    ? await collectFirstPersonFilesFromLocalSource(args.source_path, roots)
+    : await collectFirstPersonFilesFromGitHub(roots, ref);
+  await writeDownloadedProjectFiles(normalizeFirstPersonFiles(files), Boolean(args.overwrite));
+
+  const installedScene = await findFirstPersonCharacterScene();
+  return {
+    ok: true,
+    repository: FIRST_PERSON_CONTROLLER_REPO,
+    ref,
+    source: args.source_path ? "project-local source_path" : "github",
+    installedRoots: roots.map((root) => `res://${root}`),
+    filesWritten: files.length,
+    characterScene: installedScene,
+    credit: FIRST_PERSON_CREDIT,
+    licenseNote: FIRST_PERSON_LICENSE_NOTE,
+    note: "Installed Jeh3no's advanced first-person PlayerCharacter controller. Use godot_create_first_person_prototype for a playable starter scene."
+  };
+}
+
+async function godotCreateFirstPersonPrototype(args) {
+  const scenePath = args.scene_path ?? "scenes/first_person_prototype.tscn";
+  const rootName = args.root_name ?? "FirstPersonPrototype";
+  validateGodotString(rootName, "root_name");
+  const sceneAbs = await resolveProjectPath(scenePath, { forWrite: true });
+  assertExtension(sceneAbs, ".tscn");
+
+  const existingScene = await findFirstPersonCharacterScene();
+  const installNeeded = existingScene == null;
+  const characterScene = existingScene ?? "res://addons/PlayerCharacter/player_character_scene.tscn";
+  const plannedChanges = [
+    ...(installNeeded && args.install_controller !== false
+      ? [{ action: "install_controller", tool: "godot_install_first_person_controller", target: "res://addons/PlayerCharacter" }]
+      : []),
+    { action: "ensure_input_actions", count: FIRST_PERSON_INPUT_ACTIONS.length, target: "res://project.godot" },
+    {
+      action: await pathExists(sceneAbs) ? "overwrite_file" : "create_file",
+      path: toResPath(sceneAbs),
+      uses: characterScene,
+      credit: FIRST_PERSON_CREDIT,
+      note: "Instances Jeh3no's first-person PlayerCharacter instead of creating a capsule placeholder."
+    }
+  ];
+
+  if (args.dry_run === true) {
+    return plannedResult(plannedChanges, {
+      path: toResPath(sceneAbs),
+      characterScene,
+      repository: FIRST_PERSON_CONTROLLER_REPO,
+      credit: FIRST_PERSON_CREDIT,
+      licenseNote: FIRST_PERSON_LICENSE_NOTE
+    });
+  }
+
+  if (installNeeded) {
+    if (args.install_controller === false) {
+      throw new Error("Jeh3no first-person PlayerCharacter is not installed. Run godot_install_first_person_controller first or keep install_controller true.");
+    }
+    await godotInstallFirstPersonController({
+      source_path: args.source_path,
+      include_dependencies: args.include_dependencies ?? true,
+      overwrite: Boolean(args.overwrite)
+    });
+  }
+
+  const installedScene = await findFirstPersonCharacterScene();
+  if (!installedScene) {
+    throw new Error("Could not find player_character_scene.tscn inside res://addons/PlayerCharacter after install.");
+  }
+
+  const finalContent = buildFirstPersonPrototypeScene(rootName, installedScene);
+  await assertCanWrite(sceneAbs, Boolean(args.overwrite));
+  await fs.mkdir(path.dirname(sceneAbs), { recursive: true });
+  await fs.writeFile(sceneAbs, finalContent, "utf8");
+  const inputActions = await ensureFirstPersonInputActions(Boolean(args.overwrite_input_actions));
+
+  return {
+    ok: true,
+    path: toResPath(sceneAbs),
+    characterScene: installedScene,
+    inputActions,
+    repository: FIRST_PERSON_CONTROLLER_REPO,
+    source: "Jeh3no first-person PlayerCharacter",
+    credit: FIRST_PERSON_CREDIT,
+    licenseNote: FIRST_PERSON_LICENSE_NOTE,
+    note: "Created a first-person prototype scene with Jeh3no's upstream PlayerCharacter controller, not a simple capsule."
+  };
+}
+
 async function godotImportImage(args) {
   requireString(args.source_path, "source_path");
   const sourceAbs = await resolveProjectPath(args.source_path, { mustExist: true });
@@ -1327,7 +1492,7 @@ function toolCategory(name) {
   if (name.includes("runtime") || name.includes("run") || name.includes("stop") || name.includes("screenshot") || name.includes("viewport")) return "runtime";
   if (name.includes("scan") || name.includes("list") || name.includes("read") || name.includes("check") || name.includes("search")) return "inspect";
   if (name.includes("scene") || name.includes("node") || name.includes("script") || name.includes("input") || name.includes("autoload") || name.includes("prototype")) return "edit";
-  if (name.includes("image") || name.includes("texture") || name.includes("model") || name.includes("sprite") || name.includes("material") || name.includes("generation_job") || name.includes("third_person_controller")) return "assets";
+  if (name.includes("image") || name.includes("texture") || name.includes("model") || name.includes("sprite") || name.includes("material") || name.includes("generation_job") || name.includes("third_person_controller") || name.includes("first_person_controller")) return "assets";
   return "misc";
 }
 
@@ -1336,6 +1501,7 @@ function workflowHelp() {
     inspectProject: ["godot_doctor", "godot_project_scan", "godot_list_scenes", "godot_list_scripts", "godot_check_errors"],
     createSimpleScene: ["godot_create_script/dry_run:true", "godot_create_scene/dry_run:true", "godot_create_script", "godot_create_scene", "godot_attach_script", "godot_add_node", "godot_read_scene", "godot_check_errors"],
     createThirdPersonPrototype: ["godot_install_third_person_controller", "godot_create_third_person_prototype", "godot_read_scene", "godot_check_errors"],
+    createFirstPersonPrototype: ["godot_install_first_person_controller", "godot_create_first_person_prototype", "godot_read_scene", "godot_check_errors"],
     importSprite: ["godot_import_image", "godot_add_node", "godot_update_node", "godot_check_errors"],
     generationSafeMode: ["godot_generate_sprite/provider:none", "godot_generate_texture/provider:none", "godot_generate_3d_model/provider:none"],
     reviewGenerationJobs: ["godot_list_generation_jobs", "godot_update_generation_job_status"],
@@ -1346,8 +1512,8 @@ function workflowHelp() {
 
 function coverageHelp() {
   return {
-    strong: ["project doctor", "Codex config generation", "project scan/search", "scene/script list/read for .tscn/.gd", "safe .tscn create/add/update with dry_run", "GDScript creation", "input action/autoload/material creation", "project-local image/model import", "third-person character prototype using Jeh3no PlayerCharacter instead of a capsule", "provider job queue and status updates", "static validation", "tracked CLI run/stop", "PNG game screenshots through Godot Movie Maker"],
-    partial: ["Godot CLI run/check/screenshot, depends on Godot executable availability", "Editor bridge play/stop/snapshot, depends on plugin enabled in the editor", "OpenAI/custom_http image generation, depends on .env credentials and network approval", "third-person controller download, depends on GitHub network availability unless source_path is provided"],
+    strong: ["project doctor", "Codex config generation", "project scan/search", "scene/script list/read for .tscn/.gd", "safe .tscn create/add/update with dry_run", "GDScript creation", "input action/autoload/material creation", "project-local image/model import", "third-person character prototype using Jeh3no PlayerCharacter instead of a capsule", "first-person/FPS prototype using Jeh3no Advanced State Machine First Person Controller instead of a capsule", "provider job queue and status updates", "static validation", "tracked CLI run/stop", "PNG game screenshots through Godot Movie Maker"],
+    partial: ["Godot CLI run/check/screenshot, depends on Godot executable availability", "Editor bridge play/stop/snapshot, depends on plugin enabled in the editor", "OpenAI/custom_http image generation, depends on .env credentials and network approval", "third-person controller download, depends on GitHub network availability unless source_path is provided", "first-person controller download, depends on GitHub network availability unless source_path is provided"],
     intentionallyLimited: ["binary .scn editing", "arbitrary shell commands", "delete node/file operations", "full UndoRedo integration from MCP"],
     futureCandidates: ["runtime autoload for input simulation and live runtime tree inspection", "LSP/DAP integration", "ClassDB introspection", "paged tool profiles for small-context clients"]
   };
@@ -1402,6 +1568,8 @@ function usageTemplate(name) {
     godot_create_material: { path: "assets/materials/example.tres", material_type: "StandardMaterial3D", albedo_color: [1, 1, 1, 1] },
     godot_install_third_person_controller: { include_dependencies: true, overwrite: false, dry_run: true },
     godot_create_third_person_prototype: { scene_path: "scenes/third_person_prototype.tscn", install_controller: true, dry_run: true },
+    godot_install_first_person_controller: { include_dependencies: true, overwrite: false, dry_run: true },
+    godot_create_first_person_prototype: { scene_path: "scenes/first_person_prototype.tscn", install_controller: true, dry_run: true },
     godot_import_image: { source_path: "icon.svg", target_path: "assets/generated/sprites/icon.svg", kind: "sprite" },
     godot_generate_sprite: { provider: "none", prompt: "small friendly slime sprite", target_path: "assets/generated/sprites/slime.png" },
     godot_generate_texture: { provider: "none", prompt: "tileable stone floor", seamless: true, target_path: "assets/generated/textures/stone.png" },
@@ -1424,6 +1592,17 @@ function usageTemplate(name) {
 
 function suggestToolChain(task) {
   const text = String(task).toLowerCase();
+  if (
+    text.includes("first person") ||
+    text.includes("first-person") ||
+    text.includes("1st person") ||
+    text.includes("fps") ||
+    text.includes("\u043e\u0442 \u043f\u0435\u0440\u0432\u043e\u0433\u043e \u043b\u0438\u0446\u0430") ||
+    text.includes("\u043f\u0435\u0440\u0432\u043e\u0433\u043e \u043b\u0438\u0446\u0430") ||
+    text.includes("\u0444\u043f\u0441")
+  ) {
+    return ["godot_doctor", "godot_project_scan", "godot_install_first_person_controller", "godot_create_first_person_prototype", "godot_check_errors"];
+  }
   if (
     text.includes("third person") ||
     text.includes("third-person") ||
@@ -1506,6 +1685,17 @@ function thirdPersonInstallRoots(args) {
   return roots;
 }
 
+function firstPersonInstallRoots(args) {
+  const roots = [FIRST_PERSON_CONTROLLER_ROOTS.player];
+  if (args.include_dependencies !== false) {
+    roots.push(...FIRST_PERSON_CONTROLLER_ROOTS.dependencies);
+  }
+  if (args.include_test_map === true) {
+    roots.push(...FIRST_PERSON_CONTROLLER_ROOTS.testMap);
+  }
+  return roots;
+}
+
 function validateGitRef(value) {
   const ref = String(value ?? THIRD_PERSON_CONTROLLER_REF);
   if (!/^[A-Za-z0-9._/-]+$/.test(ref) || ref.includes("..") || ref.startsWith("/") || ref.endsWith("/")) {
@@ -1554,6 +1744,33 @@ async function collectThirdPersonFilesFromLocalSource(sourcePath, roots) {
   return files;
 }
 
+async function collectFirstPersonFilesFromLocalSource(sourcePath, roots) {
+  requireString(sourcePath, "source_path");
+  const sourceRoot = await resolveProjectPath(sourcePath, { mustExist: true, expectDirectory: true });
+  const files = [];
+  for (const root of roots) {
+    const sourceDir = path.join(sourceRoot, fromProjectSeparators(root));
+    const stat = await fs.stat(sourceDir);
+    if (!stat.isDirectory()) {
+      throw new Error(`source_path must contain ${root}.`);
+    }
+    for (const fileAbs of await collectAbsoluteFiles(sourceDir, 8000)) {
+      const relative = path.relative(sourceDir, fileAbs).split(path.sep).join("/");
+      files.push({
+        path: `${root}/${relative}`,
+        bytes: await fs.readFile(fileAbs)
+      });
+    }
+  }
+  for (const file of FIRST_PERSON_OPTIONAL_LICENSE_FILES) {
+    const sourceFile = path.join(sourceRoot, fromProjectSeparators(file));
+    if (await pathExists(sourceFile)) {
+      files.push({ path: file, bytes: await fs.readFile(sourceFile) });
+    }
+  }
+  return files;
+}
+
 async function collectThirdPersonFilesFromGitHub(roots, ref) {
   if (typeof fetch !== "function") {
     throw new Error("This Node.js runtime does not provide fetch; use source_path with a local checkout.");
@@ -1579,6 +1796,41 @@ async function collectThirdPersonFilesFromGitHub(roots, ref) {
     totalBytes += bytes.byteLength;
     if (totalBytes > 512 * 1024 * 1024) {
       throw new Error("Refusing to download more than 512 MiB for third-person controller assets.");
+    }
+    downloaded.push({ path: file.path, bytes });
+  }
+  return downloaded;
+}
+
+async function collectFirstPersonFilesFromGitHub(roots, ref) {
+  if (typeof fetch !== "function") {
+    throw new Error("This Node.js runtime does not provide fetch; use source_path with a local checkout.");
+  }
+
+  const treeUrl = `https://api.github.com/repos/${FIRST_PERSON_CONTROLLER_REPO}/git/trees/${encodeURIComponent(ref)}?recursive=1`;
+  const tree = await fetchJson(treeUrl);
+  const files = (tree.tree ?? [])
+    .filter((item) =>
+      item?.type === "blob" &&
+      (roots.some((root) => item.path === root || item.path.startsWith(`${root}/`)) ||
+        FIRST_PERSON_OPTIONAL_LICENSE_FILES.includes(item.path))
+    )
+    .sort((a, b) => a.path.localeCompare(b.path));
+
+  if (files.length === 0) {
+    throw new Error(`No first-person PlayerCharacter files found in ${FIRST_PERSON_CONTROLLER_REPO}@${ref}.`);
+  }
+
+  const downloaded = [];
+  let totalBytes = 0;
+  for (const file of files) {
+    if (Number(file.size ?? 0) > MAX_MODEL_BYTES) {
+      throw new Error(`Refusing to download large file: ${file.path}.`);
+    }
+    const bytes = await fetchBytes(rawGitHubUrl(FIRST_PERSON_CONTROLLER_REPO, ref, file.path));
+    totalBytes += bytes.byteLength;
+    if (totalBytes > 512 * 1024 * 1024) {
+      throw new Error("Refusing to download more than 512 MiB for first-person controller assets.");
     }
     downloaded.push({ path: file.path, bytes });
   }
@@ -1626,6 +1878,26 @@ async function writeDownloadedProjectFiles(files, overwrite) {
   }
 }
 
+function normalizeFirstPersonFiles(files) {
+  return files.map((file) => {
+    if (!isTextAssetPath(file.path)) {
+      return file;
+    }
+    const text = file.bytes.toString("utf8");
+    if (!text.includes(FIRST_PERSON_UPSTREAM_RES_PREFIX)) {
+      return file;
+    }
+    return {
+      ...file,
+      bytes: Buffer.from(text.replaceAll(FIRST_PERSON_UPSTREAM_RES_PREFIX, FIRST_PERSON_LOCAL_RES_PREFIX), "utf8")
+    };
+  });
+}
+
+function isTextAssetPath(filePath) {
+  return [".tscn", ".gd", ".tres", ".material", ".gdshader", ".import", ".cfg", ".md", ".txt"].includes(path.posix.extname(filePath).toLowerCase());
+}
+
 async function collectAbsoluteFiles(root, maxFiles) {
   const result = [];
   await visit(root);
@@ -1666,6 +1938,20 @@ async function findThirdPersonCharacterScene() {
   return `res://${preferred ?? files[0]}`;
 }
 
+async function findFirstPersonCharacterScene() {
+  const root = path.join(projectRoot, "addons", "PlayerCharacter");
+  if (!(await pathExists(root))) {
+    return null;
+  }
+  const files = (await walk(root, { maxFiles: 8000 })).filter((file) => file.toLowerCase().endsWith(".tscn"));
+  if (files.length === 0) {
+    return null;
+  }
+  files.sort((a, b) => a.localeCompare(b));
+  const preferred = files.find((file) => path.posix.basename(file).toLowerCase() === "player_character_scene.tscn");
+  return `res://${preferred ?? files[0]}`;
+}
+
 function buildThirdPersonPrototypeScene(rootName, characterScene) {
   return [
     "[gd_scene load_steps=4 format=3]",
@@ -1700,6 +1986,42 @@ function buildThirdPersonPrototypeScene(rootName, characterScene) {
   ].join("\n");
 }
 
+function buildFirstPersonPrototypeScene(rootName, characterScene) {
+  return [
+    "[gd_scene load_steps=4 format=3]",
+    "",
+    `[ext_resource type="PackedScene" path="${characterScene}" id="1_player_character"]`,
+    "",
+    '[sub_resource type="BoxMesh" id="BoxMesh_floor"]',
+    "size = Vector3(20, 0.2, 20)",
+    "",
+    '[sub_resource type="BoxShape3D" id="BoxShape3D_floor"]',
+    "size = Vector3(20, 0.2, 20)",
+    "",
+    `[node name="${rootName}" type="Node3D"]`,
+    "",
+    '[node name="PlayerCharacter" parent="." instance=ExtResource("1_player_character")]',
+    "transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)",
+    "",
+    '[node name="Ground" type="StaticBody3D" parent="."]',
+    "",
+    '[node name="Mesh" type="MeshInstance3D" parent="Ground"]',
+    'mesh = SubResource("BoxMesh_floor")',
+    "",
+    '[node name="CollisionShape3D" type="CollisionShape3D" parent="Ground"]',
+    'shape = SubResource("BoxShape3D_floor")',
+    "",
+    '[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]',
+    "transform = Transform3D(0.866025, -0.353553, 0.353553, 0, 0.707107, 0.707107, -0.5, -0.612372, 0.612372, 0, 8, 0)",
+    "",
+    '[node name="PrototypeNotes" type="Node" parent="."]',
+    'metadata/uses = "Jeh3no/Godot-Advanced-State-Machine-First-Person-Controller addons/PlayerCharacter"',
+    `metadata/credit = "${FIRST_PERSON_CREDIT}"`,
+    `metadata/license_note = "${FIRST_PERSON_LICENSE_NOTE}"`,
+    ""
+  ].join("\n");
+}
+
 async function ensureThirdPersonInputActions(overwrite) {
   const projectFile = path.join(projectRoot, "project.godot");
   let text = await readTextFile(projectFile, MAX_TEXT_BYTES);
@@ -1726,6 +2048,34 @@ async function ensureThirdPersonInputActions(overwrite) {
 
   await fs.writeFile(projectFile, text, "utf8");
   return { created, updated, skipped, total: THIRD_PERSON_INPUT_ACTIONS.length };
+}
+
+async function ensureFirstPersonInputActions(overwrite) {
+  const projectFile = path.join(projectRoot, "project.godot");
+  let text = await readTextFile(projectFile, MAX_TEXT_BYTES);
+  const created = [];
+  const updated = [];
+  const skipped = [];
+
+  for (const item of FIRST_PERSON_INPUT_ACTIONS) {
+    const value = `{"deadzone":0.5,"events":[${item.events.map(serializeInputEvent).join(", ")}]}`;
+    if (projectSettingExists(text, "input", item.action)) {
+      if (!overwrite) {
+        skipped.push(item.action);
+        continue;
+      }
+      const result = setProjectSetting(text, "input", item.action, value, true);
+      text = result.text;
+      updated.push(item.action);
+    } else {
+      const result = setProjectSetting(text, "input", item.action, value, false);
+      text = result.text;
+      created.push(item.action);
+    }
+  }
+
+  await fs.writeFile(projectFile, text, "utf8");
+  return { created, updated, skipped, total: FIRST_PERSON_INPUT_ACTIONS.length };
 }
 
 function projectSettingExists(text, section, key) {

@@ -94,6 +94,8 @@ After this, `godot_check_errors` can run a real headless editor check and `godot
 - `godot_create_material`
 - `godot_install_third_person_controller`
 - `godot_create_third_person_prototype`
+- `godot_install_first_person_controller`
+- `godot_create_first_person_prototype`
 - `godot_import_image`
 - `godot_generate_sprite`
 - `godot_generate_texture`
@@ -119,7 +121,10 @@ Character prototype tools:
 
 - `godot_install_third_person_controller` installs Jeh3no `addons/PlayerCharacter` from GitHub and copies sibling `addons/Arts` dependencies by default.
 - `godot_create_third_person_prototype` creates a starter 3D scene that instances `res://addons/PlayerCharacter/...` instead of creating a simple capsule placeholder.
+- `godot_install_first_person_controller` installs Jeh3no's advanced state-machine first-person controller from `Jeh3no/Godot-Advanced-State-Machine-First-Person-Controller`, copies `addons/PlayerCharacter` plus `addons/Arts`, and preserves upstream license files when present.
+- `godot_create_first_person_prototype` creates a starter FPS scene that instances Jeh3no `res://addons/PlayerCharacter/player_character_scene.tscn`, adds the controller input actions, and writes scene metadata crediting Jeh3no.
 - Use `source_path` when you already have a project-local checkout of `Jeh3no/Godot-Third-Person-Controller` and want an offline install.
+- Use `source_path` with `Jeh3no/Godot-Advanced-State-Machine-First-Person-Controller` for offline first-person installs.
 
 ## Provider Defaults
 
