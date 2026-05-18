@@ -63,6 +63,7 @@ try {
   const names = listed.tools.map((tool) => tool.name);
   for (const name of [
     "godot_help",
+    "godot_agent_instructions",
     "godot_doctor",
     "godot_codex_config",
     "godot_bridge_status",
@@ -103,6 +104,26 @@ try {
 
   const help = await call("godot_help", { category: "coverage" });
   assert(help.coverage.strong.some((item) => item.includes("project scan")), "godot_help must expose coverage info");
+
+  const agentHelp = await call("godot_help", { category: "agent" });
+  assert(agentHelp.agent.mode === "instruction_first", "godot_help agent category must describe instruction-first mode");
+  assert(
+    agentHelp.agent.jsToolsOwn.some((item) => item.includes("path sandboxing")),
+    "agent help must keep sandbox responsibilities in MCP JS"
+  );
+
+  const agentInstructions = await call("godot_agent_instructions", {
+    client: "claude",
+    task: "create a first person prototype",
+    detail: "full"
+  });
+  assert(agentInstructions.mode === "instruction_first", "godot_agent_instructions must return instruction-first mode");
+  assert(agentInstructions.client === "claude", "godot_agent_instructions must preserve the requested client");
+  assert(agentInstructions.workflow === "first_person", "godot_agent_instructions must infer first-person workflow");
+  assert(
+    agentInstructions.mcpPrimitiveUse.some((item) => item.includes("Scan/search/read")),
+    "godot_agent_instructions must describe MCP tools as primitives"
+  );
 
   const generationHelp = await call("godot_help", { category: "generation" });
   assert(generationHelp.generation.realAdapters.includes("meshy text-to-3d"), "generation help must include Meshy model adapter");

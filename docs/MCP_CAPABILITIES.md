@@ -4,11 +4,14 @@ This file is the compact tool map for AI clients. It describes the MCP tools exp
 
 The capabilities below are part of the Godot MCP tool itself. They are not local Codex skills.
 
+GODOT-MCP is now instruction-first. Codex, Claude, or another AI client should do most project-specific thinking and content creation. The JavaScript MCP server provides safe primitives for project scan/read/write/import/generation/validation. See `docs/MCP_AGENT_INSTRUCTIONS.md` for the operating model.
+
 ## Start Here
 
 For every new task, Codex, Claude, or another MCP client should begin with:
 
 ```text
+godot_agent_instructions({ "client": "codex", "task": "<user task>" })
 godot_help({ "category": "overview" })
 godot_doctor({})
 godot_project_scan({})
@@ -32,8 +35,16 @@ Use `res://` and project-local paths. Keep all changes inside the folder that co
 | Tool | Mutates | Use when |
 | --- | --- | --- |
 | `godot_help` | No | The client needs a tool map, workflow chain, category summary, safety notes, or a usage template. |
+| `godot_agent_instructions` | No | Codex, Claude, or another AI client needs instruction-first guidance for a user task. |
 | `godot_doctor` | No | The client needs a beginner-friendly health check for Node, Godot CLI, bridge reachability, providers, folders, and recommendations. |
 | `godot_codex_config` | No | Codex needs ready-to-paste TOML for the current project root. |
+
+### Instruction-First Split
+
+| Owner | Responsibilities |
+| --- | --- |
+| AI client | Understand the user request, choose Godot 4 architecture, write GDScript and scene content, decide workflow, review tool results, run required validation loops, explain changed files. |
+| MCP JS tools | Enforce project-root sandboxing, provide scan/search/read primitives, apply small guarded writes, import assets, queue/call configured providers, run Godot/editor bridge checks, return structured errors. |
 
 ### Editor Bridge
 
@@ -233,5 +244,5 @@ Use `godot_capture_editor_viewport` instead when the task specifically needs the
 Paste this into Codex, Claude, or another MCP client after connecting the server:
 
 ```text
-Use docs/MCP_CAPABILITIES.md as the Godot MCP tool map. First call godot_help with category overview, then godot_doctor, godot_project_scan, and godot_check_errors. Use dry runs before scene/script writes. If gameplay scripts changed, run the game and inspect the Godot console. If visible objects changed, capture a screenshot and inspect placement. Keep provider none unless I explicitly configure a provider in .env.
+Use docs/MCP_AGENT_INSTRUCTIONS.md and docs/MCP_CAPABILITIES.md as the Godot MCP tool map. First call godot_agent_instructions for my task, then godot_help with category overview, godot_doctor, godot_project_scan, and godot_check_errors. Plan and write the solution in the AI client; use MCP JS tools only as safe primitives. Use dry runs before scene/script writes. If gameplay scripts changed, run the game and inspect the Godot console. If visible objects changed, capture a screenshot and inspect placement. Keep provider none unless I explicitly configure a provider in .env.
 ```

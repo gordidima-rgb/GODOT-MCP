@@ -6,6 +6,7 @@ Project root: the folder that contains `project.godot`.
 
 Work with this Godot 4.x project through the safe MCP tools.
 Use `docs/MCP_CAPABILITIES.md` as the full tool map for Codex, Claude, and any other MCP client.
+Use `docs/MCP_AGENT_INSTRUCTIONS.md` for instruction-first mode: the AI client plans and writes Godot-specific content; MCP JS tools are safe primitives for scan/read/write/import/generation/validation.
 First inspect the project, list scenes and scripts, then make small scoped changes.
 Do not delete existing files unless the user explicitly asks for it.
 When creating scripts, add short comments that help a beginner understand the code.
@@ -14,15 +15,17 @@ If image or 3D generation providers are set to none, save generation jobs instea
 ## Recommended First Steps
 
 1. Run `godot_help`.
-2. Run `godot_doctor`.
-3. Run `godot_project_scan`.
-4. Run `godot_list_scenes` and `godot_list_scripts`.
-5. Run `godot_check_errors`.
-6. Make the smallest useful change and report created or modified files.
+2. Run `godot_agent_instructions` with the user task and client name.
+3. Run `godot_doctor`.
+4. Run `godot_project_scan`.
+5. Run `godot_list_scenes` and `godot_list_scripts`.
+6. Run `godot_check_errors`.
+7. Make the smallest useful change and report created or modified files.
 
 ## Capability Map
 
 - Discovery/setup: `godot_help`, `godot_doctor`, `godot_codex_config`.
+- Instruction-first guidance: `godot_agent_instructions`.
 - Bridge: `godot_bridge_status`, `godot_editor_scene_snapshot`, `godot_capture_editor_viewport`.
 - Inspect: `godot_project_scan`, `godot_search_project`, `godot_list_scenes`, `godot_list_scripts`, `godot_read_scene`, `godot_check_errors`.
 - Edit: `godot_create_scene`, `godot_add_node`, `godot_update_node`, `godot_attach_script`, `godot_create_script`, `godot_create_input_action`, `godot_create_autoload`, `godot_create_material`.

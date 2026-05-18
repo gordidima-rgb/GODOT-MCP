@@ -2,7 +2,7 @@
 
 These recipes assume Codex, Claude, or another MCP client is connected to the local MCP server and the project is a Godot 4.x project.
 
-For the full tool map, start with `docs/MCP_CAPABILITIES.md`.
+For the full tool map, start with `docs/MCP_CAPABILITIES.md`. For the instruction-first model, read `docs/MCP_AGENT_INSTRUCTIONS.md`.
 
 ## 1. Check The Project
 
@@ -11,6 +11,8 @@ Ask Codex or Claude:
 ```text
 Run godot_doctor, then godot_project_scan. Tell me what is safe to change first.
 ```
+
+For larger tasks, ask the AI client to call `godot_agent_instructions` with your task before it writes anything.
 
 Use this before bigger edits. It checks the project root, server version, Node.js, `project.godot`, Godot CLI, the editor bridge, `.env`, providers, and expected folders.
 

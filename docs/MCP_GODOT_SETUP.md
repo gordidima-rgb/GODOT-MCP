@@ -3,6 +3,7 @@
 This project has a local Godot MCP server in `tools/mcp-godot/`. It is designed as a safe base first: scan, scene/script/node operations, imports, and validation before any real asset generation.
 
 For Codex, Claude, and other MCP clients, the full capability map is `docs/MCP_CAPABILITIES.md`.
+For the instruction-first model where the AI client does most planning/content work and JS tools stay as safe primitives, read `docs/MCP_AGENT_INSTRUCTIONS.md`.
 
 ## Current Project Scan Notes
 
@@ -83,6 +84,7 @@ After this, `godot_check_errors` can run a real headless editor check and `godot
 Use `docs/MCP_CAPABILITIES.md` as the canonical Codex/Claude tool map. This setup page keeps the short list for quick checks.
 
 - `godot_help`
+- `godot_agent_instructions`
 - `godot_doctor`
 - `godot_codex_config`
 - `godot_bridge_status`

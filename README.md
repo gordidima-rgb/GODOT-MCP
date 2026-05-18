@@ -10,6 +10,8 @@ Current version: `0.4.1`
 
 This repository gives Codex, Claude, or another MCP-capable AI client a small, safe API for working inside a Godot 4.x project. The MCP server can inspect files, create small Godot resources, queue generation jobs, and call a local Godot EditorPlugin bridge when richer editor context is needed.
 
+GODOT-MCP is instruction-first: Codex, Claude, or the user's AI model should plan the work, write Godot-specific content, and decide validation loops. The JavaScript MCP tools are intentionally small safe primitives for project IO, imports, generation jobs, editor/Godot checks, and sandbox enforcement.
+
 The goal is conservative automation:
 
 1. Inspect first.
@@ -49,6 +51,7 @@ Run godot_doctor, then godot_project_scan.
 ```
 
 For Codex, Claude, or any MCP-capable client, use `docs/MCP_CAPABILITIES.md` as the full tool map.
+Use `docs/MCP_AGENT_INSTRUCTIONS.md` for the instruction-first operating model.
 
 If you already cloned this repository, you can run the installer locally from the project root:
 
@@ -120,6 +123,7 @@ This project currently contains both `Assets/` and `assets/`. The doctor reports
 ## What AI Can Safely Do
 
 - Scan project files and summarize scenes, scripts, resources, materials, textures, and models.
+- Return instruction-first workflow guidance for Codex, Claude, or another MCP client.
 - Search safe text files without reading dotfiles such as `.env`.
 - Create beginner-readable `.gd` scripts.
 - Create simple text `.tscn` scenes and add/update nodes.
@@ -149,6 +153,7 @@ The canonical Codex/Claude tool map lives in `docs/MCP_CAPABILITIES.md`. Keep th
 | Tool | Category | Mutates project | Purpose |
 | --- | --- | --- | --- |
 | `godot_help` | discovery | No | Show available workflows, categories, safety notes, and usage templates. |
+| `godot_agent_instructions` | discovery | No | Return instruction-first guidance so the AI client does most planning/content work and MCP JS stays as safe primitives. |
 | `godot_doctor` | discovery | No | Check project setup, bridge reachability, providers, folders, and recommendations. |
 | `godot_codex_config` | discovery | No | Return ready-to-paste Codex MCP TOML for the current project root. |
 | `godot_bridge_status` | bridge | No | Check whether the optional Godot editor bridge is listening. |
@@ -297,6 +302,7 @@ The GitHub Actions workflow in `.github/workflows/ci.yml` runs the same checks.
 Beginner workflows live in:
 
 - `docs/RECIPES.md`
+- `docs/MCP_AGENT_INSTRUCTIONS.md`
 - `docs/MCP_CAPABILITIES.md`
 - `docs/MCP_GODOT_SETUP.md`
 - `docs/GODOT_MCP_RESEARCH.md`

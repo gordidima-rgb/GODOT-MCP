@@ -2,6 +2,8 @@
 
 This is a local stdio MCP server for the current Godot 4 project. It works without npm installs and only uses Node.js built-ins.
 
+The server is instruction-first. Codex, Claude, or another AI client should plan and write the project-specific solution. The JavaScript tools are safe primitives for scan/read/write/import/generation jobs/runtime validation.
+
 ## What It Can Do
 
 For Codex, Claude, and other MCP clients, the full tool map lives in [`../../docs/MCP_CAPABILITIES.md`](../../docs/MCP_CAPABILITIES.md).
@@ -23,6 +25,7 @@ For Codex, Claude, and other MCP clients, the full tool map lives in [`../../doc
 ## Tool Names
 
 - `godot_help`
+- `godot_agent_instructions`
 - `godot_doctor`
 - `godot_codex_config`
 - `godot_bridge_status`
@@ -61,6 +64,7 @@ For Codex, Claude, and other MCP clients, the full tool map lives in [`../../doc
 Start with:
 
 ```text
+godot_agent_instructions
 godot_help
 godot_project_scan
 godot_bridge_status

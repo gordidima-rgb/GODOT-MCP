@@ -1,6 +1,7 @@
 # AI Client Setup
 
 Use `docs/MCP_CAPABILITIES.md` as the shared tool map for Codex, Claude, and any other MCP-capable client.
+Use `docs/MCP_AGENT_INSTRUCTIONS.md` as the instruction-first operating model: the AI client plans and writes Godot-specific content, while MCP JavaScript tools stay as safe primitives.
 
 ## Codex
 
@@ -18,6 +19,7 @@ Then restart Codex and ask it to run:
 
 ```text
 godot_help category overview
+godot_agent_instructions client codex task "<your task>"
 godot_doctor
 godot_project_scan
 godot_check_errors
@@ -46,13 +48,14 @@ Add the same local stdio server to the Claude Desktop MCP config. Replace `<PROJ
 }
 ```
 
-After reconnecting Claude, ask it to read `docs/MCP_CAPABILITIES.md` and start with `godot_help`, `godot_doctor`, `godot_project_scan`, and `godot_check_errors`.
+After reconnecting Claude, ask it to read `docs/MCP_AGENT_INSTRUCTIONS.md` and `docs/MCP_CAPABILITIES.md`, then start with `godot_agent_instructions`, `godot_help`, `godot_doctor`, `godot_project_scan`, and `godot_check_errors`.
 
 ## Shared Rules
 
 - Use Godot 4.x APIs only.
 - Keep all file changes inside the project root.
 - Use `res://` paths for Godot-facing references.
+- Use `godot_agent_instructions` first so planning stays in the AI client and MCP JS tools stay as safe primitives.
 - Never write real API keys to source files or logs.
 - Start with project scan, scene list, and error checks before larger edits.
 - Use dry runs before larger scene/script writes.

@@ -110,8 +110,14 @@ let runningGame = null;
 const tools = [
   tool("godot_help", "Discover available tool categories, workflows, safety modes, and usage templates.", {
     tool: { type: "string", description: "Optional exact tool name to describe." },
-    category: { type: "string", description: "Optional category: overview, workflows, coverage, safety, bridge, generation, debug." },
+    category: { type: "string", description: "Optional category: overview, agent, workflows, coverage, safety, bridge, generation, debug." },
     task: { type: "string", description: "Optional task description for a suggested tool chain." }
+  }),
+  tool("godot_agent_instructions", "Return instruction-first guidance for Codex, Claude, or another AI client. The MCP JS tools stay as safe project primitives.", {
+    client: { type: "string", enum: ["generic", "codex", "claude"], default: "generic" },
+    workflow: { type: "string", enum: ["auto", "inspect", "create_scene", "third_person", "first_person", "assets", "debug", "visual_check", "provider_setup", "bridge"], default: "auto" },
+    task: { type: "string", description: "Optional user task. Used to choose an instruction workflow when workflow is auto." },
+    detail: { type: "string", enum: ["short", "full"], default: "full" }
   }),
   tool("godot_doctor", "Run a beginner-friendly health check for project setup, bridge connectivity, providers, and expected folders.", {
     timeout_ms: { type: "integer", minimum: 200, maximum: 5000, default: 1000 }
@@ -424,6 +430,7 @@ async function callTool(params) {
   try {
     const handlers = {
       godot_help: godotHelp,
+      godot_agent_instructions: godotAgentInstructions,
       godot_doctor: godotDoctor,
       godot_codex_config: godotCodexConfig,
       godot_bridge_status: godotBridgeStatus,
@@ -481,15 +488,20 @@ async function godotHelp(args) {
       category: toolCategory(selected.name),
       mutatesProject: WRITE_TOOLS.has(selected.name),
       readOnlyModeBlocked: READ_ONLY_MODE && WRITE_TOOLS.has(selected.name),
-      usage: usageTemplate(selected.name)
+      usage: usageTemplate(selected.name),
+      agentUse: toolAgentUse(selected.name)
     };
   }
 
   if (args.task) {
+    const workflow = selectAgentWorkflow("auto", args.task);
     return {
       ok: true,
       task: args.task,
-      suggestedChain: suggestToolChain(args.task)
+      instructionFirst: true,
+      workflow,
+      suggestedChain: suggestToolChain(args.task),
+      agentInstructions: buildAgentInstructions({ client: "generic", workflow, task: args.task, detail: "short" })
     };
   }
 
@@ -502,11 +514,27 @@ async function godotHelp(args) {
     category,
     toolsByCategory: groupToolsByCategory(),
     workflows: category === "overview" || category === "workflows" ? workflowHelp() : undefined,
+    agent: category === "overview" || category === "agent" ? agentHelp() : undefined,
     coverage: category === "overview" || category === "coverage" ? coverageHelp() : undefined,
     safety: category === "overview" || category === "safety" ? safetyHelp() : undefined,
     generation: category === "generation" ? generationHelp() : undefined,
     debug: category === "overview" || category === "debug" ? debugHelp() : undefined,
     bridgeNotes: category === "overview" || category === "bridge" ? bridgeHelp() : undefined
+  };
+}
+
+async function godotAgentInstructions(args) {
+  const client = normalizeAgentClient(args.client);
+  const workflow = selectAgentWorkflow(args.workflow ?? "auto", args.task ?? "");
+  const detail = args.detail === "short" ? "short" : "full";
+  return {
+    ok: true,
+    serverVersion: SERVER_VERSION,
+    mode: "instruction_first",
+    client,
+    workflow,
+    task: args.task ?? "",
+    ...buildAgentInstructions({ client, workflow, task: args.task ?? "", detail })
   };
 }
 
@@ -1493,7 +1521,7 @@ function groupToolsByCategory() {
 }
 
 function toolCategory(name) {
-  if (name === "godot_help" || name === "godot_doctor" || name === "godot_codex_config") return "discovery";
+  if (name === "godot_help" || name === "godot_agent_instructions" || name === "godot_doctor" || name === "godot_codex_config") return "discovery";
   if (name.includes("bridge")) return "bridge";
   if (name.includes("runtime") || name.includes("run") || name.includes("stop") || name.includes("screenshot") || name.includes("viewport")) return "runtime";
   if (name.includes("scan") || name.includes("list") || name.includes("read") || name.includes("check") || name.includes("search")) return "inspect";
@@ -1515,6 +1543,35 @@ function workflowHelp() {
     visualCheckAfterSceneObjects: ["godot_run_project/dry_run:false", "godot_capture_screenshot", "inspect placement/visibility/scale/framing", "fix scene", "repeat screenshot if needed", "godot_stop_project"],
     runtimeLoop: ["godot_run_project/dry_run:false", "godot_runtime_status", "godot_capture_screenshot", "godot_stop_project"],
     editorBridgeLoop: ["enable addons/ai_mcp_bridge", "godot_bridge_status", "godot_editor_scene_snapshot", "godot_run_project/mode:editor", "godot_stop_project/mode:editor"]
+  };
+}
+
+function agentHelp() {
+  return {
+    mode: "instruction_first",
+    principle: "The user's AI client plans the Godot work, writes domain-specific code/content, and decides the next step. MCP JS tools provide sandboxed project primitives for reading, writing, importing, running, and validating.",
+    startWith: ["godot_agent_instructions", "godot_doctor", "godot_project_scan", "godot_check_errors"],
+    aiClientOwns: [
+      "understanding the user's intent",
+      "choosing Godot 4 nodes, scripts, resources, and scene structure",
+      "writing GDScript and scene content that matches the project",
+      "deciding whether to use third-person, first-person, asset, debug, or validation workflow",
+      "reading tool results and correcting the next action"
+    ],
+    jsToolsOwn: [
+      "path sandboxing inside the project root",
+      "small reversible file writes with dry_run and overwrite controls",
+      "project scanning, safe text search, and text .tscn parsing",
+      "provider queue files and configured provider adapters",
+      "Godot CLI/editor bridge validation when available"
+    ],
+    keepInJsBecause: [
+      "security boundaries and path normalization",
+      "repeatable fixture tests",
+      "provider credential handling through .env",
+      "local Godot process and editor bridge control"
+    ],
+    docs: ["docs/MCP_AGENT_INSTRUCTIONS.md", "docs/MCP_CAPABILITIES.md"]
   };
 }
 
@@ -1595,8 +1652,162 @@ function bridgeHelp() {
   };
 }
 
+function normalizeAgentClient(client) {
+  const value = String(client ?? "generic").toLowerCase();
+  if (value === "codex" || value === "claude") return value;
+  return "generic";
+}
+
+function selectAgentWorkflow(workflow, task) {
+  const explicit = String(workflow ?? "auto").toLowerCase();
+  if (explicit && explicit !== "auto") return explicit;
+  const text = String(task ?? "").toLowerCase();
+  if (text.includes("first person") || text.includes("first-person") || text.includes("1st person") || text.includes("fps") || text.includes("\u043e\u0442 \u043f\u0435\u0440\u0432\u043e\u0433\u043e \u043b\u0438\u0446\u0430") || text.includes("\u0444\u043f\u0441")) {
+    return "first_person";
+  }
+  if (text.includes("third person") || text.includes("third-person") || text.includes("3rd person") || text.includes("player character") || (text.includes("prototype") && text.includes("character")) || (text.includes("\u043f\u0440\u043e\u0442\u043e\u0442\u0438\u043f") && text.includes("\u043f\u0435\u0440\u0441\u043e\u043d\u0430\u0436"))) {
+    return "third_person";
+  }
+  if (text.includes("debug") || text.includes("error") || text.includes("run") || text.includes("play") || text.includes("console")) return "debug";
+  if (text.includes("screenshot") || text.includes("placement") || text.includes("visible") || text.includes("viewport")) return "visual_check";
+  if (text.includes("provider") || text.includes("api key") || text.includes("mesh") || text.includes("3d model") || text.includes("sprite") || text.includes("texture") || text.includes("asset")) return "assets";
+  if (text.includes("bridge") || text.includes("editor")) return "bridge";
+  if (text.includes("scene") || text.includes("node") || text.includes("script")) return "create_scene";
+  return "inspect";
+}
+
+function buildAgentInstructions({ client, workflow, task, detail }) {
+  const selected = agentWorkflowInstructions(workflow);
+  const toolChain = toolChainForAgentWorkflow(workflow);
+  const base = {
+    principle: "Instruction-first: the AI client owns planning, code/content decisions, and review. MCP JS tools are safe primitives, not the main source of project intelligence.",
+    clientGuidance: clientGuidance(client),
+    agentResponsibilities: [
+      "Restate the user's goal in concrete Godot 4 terms before writing.",
+      "Inspect the project first and follow existing folders, naming, and scripts.",
+      "Use dry_run for scene/script writes when the change is more than a tiny one-liner.",
+      "Write Godot-facing paths as res:// or project-local paths.",
+      "Use MCP tools for sandboxed reads/writes/imports/validation, then interpret the results yourself.",
+      "Report every file created or changed."
+    ],
+    mcpPrimitiveUse: [
+      "Scan/search/read project context.",
+      "Apply small safe writes after the AI client has decided what to write.",
+      "Queue provider jobs or call configured providers without exposing secrets.",
+      "Run Godot CLI/editor bridge checks when available.",
+      "Reject unsafe paths, overwrites, and read-only blocked writes."
+    ],
+    notForJsScripts: [
+      "Do not expect MCP JS to design gameplay, UI, architecture, or story content.",
+      "Do not ask MCP JS to invent large GDScript systems without the AI client reviewing code.",
+      "Do not bypass dry_run, screenshot checks, console checks, or .env secret rules."
+    ],
+    workflowInstructions: selected,
+    toolChain,
+    readyPrompt: readyAgentPrompt(client, workflow, task)
+  };
+  if (detail === "short") {
+    return {
+      principle: base.principle,
+      workflow: selected.name,
+      steps: selected.steps,
+      toolChain,
+      readyPrompt: base.readyPrompt
+    };
+  }
+  return base;
+}
+
+function clientGuidance(client) {
+  if (client === "codex") {
+    return "Codex should call godot_agent_instructions for the user task, then use MCP tools as project-safe primitives while keeping reasoning and implementation choices in the agent.";
+  }
+  if (client === "claude") {
+    return "Claude should read this result as the operating prompt for the Godot MCP server: plan in Claude, call tools only for project IO, imports, generation jobs, and validation.";
+  }
+  return "Any MCP-capable AI client should plan and write the solution itself, using MCP tools as safe project operations.";
+}
+
+function agentWorkflowInstructions(workflow) {
+  const workflows = {
+    inspect: {
+      name: "inspect",
+      intent: "Understand the project before editing.",
+      steps: ["Run doctor and scan.", "List scenes and scripts.", "Read only the files needed for the task.", "Summarize safe next steps before writing."]
+    },
+    create_scene: {
+      name: "create_scene",
+      intent: "Create or modify a scene/script with AI-authored Godot 4 content.",
+      steps: ["Inspect existing scene/script patterns.", "Draft the node tree and script behavior in the AI client.", "Use dry_run for script and scene writes.", "Apply the smallest useful writes.", "Read back the scene and run validation."]
+    },
+    third_person: {
+      name: "third_person",
+      intent: "Create a character prototype using Jeh3no third-person data, not a capsule placeholder.",
+      steps: ["Install the Jeh3no third-person controller.", "Create the prototype scene.", "Read back the scene.", "Credit Jeh3no in the final summary.", "Validate with Godot checks when available."]
+    },
+    first_person: {
+      name: "first_person",
+      intent: "Create a first-person/FPS prototype using Jeh3no data, not a capsule placeholder.",
+      steps: ["Install the Jeh3no first-person controller.", "Create the prototype scene.", "Read back the scene.", "Credit Jeh3no in the final summary.", "Validate with Godot checks when available."]
+    },
+    assets: {
+      name: "assets",
+      intent: "Import or generate assets while keeping provider decisions and prompts reviewable.",
+      steps: ["Keep provider none unless .env config and user intent allow a real provider.", "Write or refine prompts in the AI client.", "Queue generation jobs or call configured provider tools.", "Import assets into project folders.", "Validate references and screenshots when assets are visible."]
+    },
+    debug: {
+      name: "debug",
+      intent: "Debug gameplay or runtime changes.",
+      steps: ["Run static/Godot checks.", "Run the game or target scene when Godot is available.", "Inspect console output.", "Fix errors in the AI client using project context.", "Rerun until the latest console output is clean or report the blocker."]
+    },
+    visual_check: {
+      name: "visual_check",
+      intent: "Verify visible scene placement.",
+      steps: ["Run the scene or use the editor bridge.", "Capture a screenshot.", "Inspect placement, visibility, scale, material, clipping, and camera framing.", "Fix and repeat if needed.", "Report screenshot path or validation limitation."]
+    },
+    provider_setup: {
+      name: "provider_setup",
+      intent: "Configure image or 3D model generation providers safely.",
+      steps: ["Keep real keys only in .env.", "Use provider none by default.", "Use the bridge UI or .env for Meshy/Tripo/custom HTTP settings.", "Restart the MCP client after .env changes.", "Never echo secrets in logs or docs."]
+    },
+    bridge: {
+      name: "bridge",
+      intent: "Use the optional Godot editor bridge for live editor context.",
+      steps: ["Enable AI MCP Bridge in Godot.", "Start the localhost bridge.", "Check status.", "Use scene snapshot or viewport screenshot.", "Fall back to file-based tools when the bridge is unavailable."]
+    }
+  };
+  return workflows[workflow] ?? workflows.inspect;
+}
+
+function toolChainForAgentWorkflow(workflow) {
+  const chains = {
+    inspect: ["godot_doctor", "godot_project_scan", "godot_list_scenes", "godot_list_scripts", "godot_check_errors"],
+    create_scene: ["godot_project_scan", "godot_create_script/dry_run:true", "godot_create_scene/dry_run:true", "godot_create_script", "godot_create_scene", "godot_read_scene", "godot_check_errors"],
+    third_person: ["godot_install_third_person_controller", "godot_create_third_person_prototype", "godot_read_scene", "godot_check_errors"],
+    first_person: ["godot_install_first_person_controller", "godot_create_first_person_prototype", "godot_read_scene", "godot_check_errors"],
+    assets: ["godot_generate_sprite/provider:none", "godot_generate_texture/provider:none", "godot_generate_3d_model/provider:none", "godot_list_generation_jobs", "godot_check_errors"],
+    debug: ["godot_check_errors", "godot_run_project/dry_run:false", "godot_runtime_status", "godot_stop_project"],
+    visual_check: ["godot_run_project/dry_run:false", "godot_capture_screenshot", "godot_stop_project"],
+    provider_setup: ["godot_help/category:generation", "godot_doctor", "godot_list_generation_jobs"],
+    bridge: ["godot_bridge_status", "godot_editor_scene_snapshot", "godot_capture_editor_viewport"]
+  };
+  return chains[workflow] ?? chains.inspect;
+}
+
+function readyAgentPrompt(client, workflow, task) {
+  const taskLine = task ? ` User task: ${task}.` : "";
+  return `Use instruction-first Godot MCP mode for ${client}.${taskLine} Plan and write the solution in the AI client. Use MCP tools only as safe primitives for project scan/read/write/import/generation jobs/runtime validation. Start with godot_doctor, godot_project_scan, and godot_check_errors, then follow the ${workflow} workflow.`;
+}
+
+function toolAgentUse(name) {
+  if (name === "godot_agent_instructions" || name === "godot_help") return "Instruction provider for the AI client; it should guide planning rather than perform project edits.";
+  if (WRITE_TOOLS.has(name)) return "Project primitive. The AI client should decide the intended change first, use dry_run/overwrite guards when available, then read back and validate.";
+  return "Read-only context or validation primitive. The AI client should interpret the result and decide the next step.";
+}
+
 function usageTemplate(name) {
   const templates = {
+    godot_agent_instructions: { client: "codex", workflow: "auto", task: "create a first person prototype", detail: "full" },
     godot_doctor: { timeout_ms: 1000 },
     godot_codex_config: { server_name: "godotMCP", startup_timeout_sec: 20 },
     godot_project_scan: { max_files: 8000, max_depth: 6 },
