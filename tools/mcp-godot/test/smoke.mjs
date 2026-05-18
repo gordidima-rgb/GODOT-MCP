@@ -145,7 +145,7 @@ try {
 
   const doctor = await call("godot_doctor", { timeout_ms: 250 });
   assert(doctor.projectRoot === fixtureRoot, "godot_doctor must report the fixture project root");
-  assert(doctor.serverVersion === "0.3.5", "godot_doctor must report server version");
+  assert(doctor.serverVersion === "0.4.0", "godot_doctor must report server version");
   assert(doctor.projectGodot.exists === true, "godot_doctor must see project.godot");
 
   const codexConfig = await call("godot_codex_config", {});

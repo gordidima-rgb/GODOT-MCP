@@ -6,7 +6,7 @@
 
 Godot MCP AI Bridge for safe AI-assisted Godot 4.x development.
 
-Current version: `0.3.5`
+Current version: `0.4.0`
 
 This repository gives Codex or another MCP-capable AI client a small, safe API for working inside a Godot 4.x project. The MCP server can inspect files, create small Godot resources, queue generation jobs, and call a local Godot EditorPlugin bridge when richer editor context is needed.
 

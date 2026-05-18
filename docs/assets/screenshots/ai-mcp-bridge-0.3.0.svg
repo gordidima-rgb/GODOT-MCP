@@ -69,12 +69,11 @@
     <text x="88" y="718" class="code">```toml</text>
     <text x="88" y="742" class="code">[mcp_servers.godotMCP]</text>
     <text x="88" y="766" class="code">command = "node"</text>
-    <text x="88" y="790" class="code">args = [ "C:/Users/gdima/Documents/learn-</text>
-    <text x="88" y="814" class="code">personal/tools/mcp-godot/src/server.mjs", "--</text>
-    <text x="88" y="838" class="code">project-root", "C:/Users/gdima/Documents/learn-</text>
-    <text x="88" y="862" class="code">personal" ]</text>
-    <text x="88" y="886" class="code">startup_timeout_sec = 20</text>
-    <text x="88" y="910" class="code">```</text>
+    <text x="88" y="790" class="code">args = [ "&lt;PROJECT_ROOT&gt;/tools/mcp-godot/src/</text>
+    <text x="88" y="814" class="code">server.mjs", "--project-root",</text>
+    <text x="88" y="838" class="code">"&lt;PROJECT_ROOT&gt;" ]</text>
+    <text x="88" y="862" class="code">startup_timeout_sec = 20</text>
+    <text x="88" y="886" class="code">```</text>
     <text x="88" y="938" class="body">Then restart Codex and ask it to run</text>
     <text x="88" y="962" class="body">`godot_project_scan` first.</text>
 
