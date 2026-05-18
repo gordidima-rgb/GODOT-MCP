@@ -22,8 +22,23 @@ jobs:
       - name: Check providers syntax
         run: node --check tools/mcp-godot/src/providers.mjs
 
+      - name: Check security helper syntax
+        run: node --check tools/mcp-godot/src/security.mjs
+
+      - name: Check Meshy model adapter syntax
+        run: node --check tools/mcp-godot/src/provider_adapters/meshy_model.mjs
+
+      - name: Check Tripo model adapter syntax
+        run: node --check tools/mcp-godot/src/provider_adapters/tripo_model.mjs
+
+      - name: Check custom HTTP model adapter syntax
+        run: node --check tools/mcp-godot/src/provider_adapters/custom_http_model.mjs
+
       - name: Run MCP smoke test
         run: node tools/mcp-godot/test/smoke.mjs
+
+      - name: Run model provider tests
+        run: node tools/mcp-godot/test/model-providers.mjs
 
       - name: Check version consistency
         run: node tools/mcp-godot/test/version-check.mjs
