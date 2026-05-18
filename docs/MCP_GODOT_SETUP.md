@@ -117,6 +117,12 @@ Runtime tools:
 - `godot_editor_scene_snapshot` asks the Godot dock bridge what scene is currently open and returns the node tree.
 - `godot_capture_editor_viewport` saves the current 2D or 3D editor viewport to `docs/assets/screenshots/editor/`.
 
+Debug workflow:
+
+- After gameplay script changes, run the game or target scene, inspect the Godot console output, fix project errors, and rerun until the latest console has no errors.
+- After placing visible scene objects, run the scene, capture a screenshot, inspect placement/visibility/scale/framing, fix issues, and repeat the screenshot check until it looks correct.
+- Run `godot_help` with `category: "debug"` for the exact tool chain.
+
 Character prototype tools:
 
 - `godot_install_third_person_controller` installs Jeh3no `addons/PlayerCharacter` from GitHub and copies sibling `addons/Arts` dependencies by default.

@@ -6,7 +6,7 @@
 
 Godot MCP AI Bridge for safe AI-assisted Godot 4.x development.
 
-Current version: `0.3.3`
+Current version: `0.3.4`
 
 This repository gives Codex or another MCP-capable AI client a small, safe API for working inside a Godot 4.x project. The MCP server can inspect files, create small Godot resources, queue generation jobs, and call a local Godot EditorPlugin bridge when richer editor context is needed.
 
@@ -179,6 +179,15 @@ This project currently contains both `Assets/` and `assets/`. The doctor reports
 | `godot_capture_screenshot` | runtime | Yes | Save a runtime PNG screenshot through Godot Movie Maker. |
 | `godot_capture_editor_viewport` | runtime | Yes | Ask the editor bridge to save a 2D or 3D viewport PNG. |
 | `godot_check_errors` | inspect | No | Run static checks and optional Godot headless validation. |
+
+## Required Debug Workflow
+
+This MCP project treats runtime validation as part of the Godot AI workflow:
+
+- After changing gameplay scripts, run the game or target scene, inspect the Godot console output, fix project errors, and rerun until the latest console has no errors. If Godot cannot run locally, report that limitation clearly.
+- After adding, moving, scaling, or importing visible scene objects, run the scene, capture a screenshot, inspect placement/visibility/scale/framing, fix issues, and repeat the screenshot check until the scene looks correct.
+
+Use `godot_help` with `category: "debug"` to get the exact MCP tool chain for these checks.
 
 ## Editor Plugin Bridge
 

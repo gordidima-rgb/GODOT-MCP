@@ -104,6 +104,20 @@ try {
   const help = await call("godot_help", { category: "coverage" });
   assert(help.coverage.strong.some((item) => item.includes("project scan")), "godot_help must expose coverage info");
 
+  const debugHelp = await call("godot_help", { category: "debug" });
+  assert(
+    debugHelp.debug.afterGameplayScriptChanges.required === true,
+    "godot_help debug must require a runtime console check after gameplay script changes"
+  );
+  assert(
+    debugHelp.debug.afterGameplayScriptChanges.completionRule.includes("Godot console"),
+    "godot_help debug must explain that the latest Godot console must be clean"
+  );
+  assert(
+    debugHelp.debug.afterSceneObjectPlacement.requiredScreenshot === true,
+    "godot_help debug must require a screenshot after placing visible scene objects"
+  );
+
   const thirdPersonHelp = await call("godot_help", { task: "create a third person character prototype scene" });
   assert(
     thirdPersonHelp.suggestedChain.includes("godot_install_third_person_controller"),
@@ -124,7 +138,7 @@ try {
 
   const doctor = await call("godot_doctor", { timeout_ms: 250 });
   assert(doctor.projectRoot === fixtureRoot, "godot_doctor must report the fixture project root");
-  assert(doctor.serverVersion === "0.3.3", "godot_doctor must report server version");
+  assert(doctor.serverVersion === "0.3.4", "godot_doctor must report server version");
   assert(doctor.projectGodot.exists === true, "godot_doctor must see project.godot");
 
   const codexConfig = await call("godot_codex_config", {});

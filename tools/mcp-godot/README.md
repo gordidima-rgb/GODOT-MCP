@@ -60,6 +60,11 @@ godot_bridge_status
 
 Set `GODOT_MCP_READ_ONLY=true` to expose the same tool list while blocking write/run/generation tools at execution time.
 
+Use `godot_help` with `category: "debug"` for mandatory validation rules:
+
+- after gameplay script changes, run the game or target scene, inspect the Godot console, fix errors, and rerun until the latest console has no errors;
+- after placing visible scene objects, capture a screenshot and inspect placement, scale, visibility, and framing before finishing.
+
 For third-person or character prototype tasks, use `godot_install_third_person_controller` and `godot_create_third_person_prototype`. These tools use Jeh3no's `addons/PlayerCharacter` controller and avoid capsule-only player placeholders.
 
 For first-person, FPS, or "от первого лица" prototype tasks, use `godot_install_first_person_controller` and `godot_create_first_person_prototype`. These tools use scenes, scripts, input defaults, and assets from `Jeh3no/Godot-Advanced-State-Machine-First-Person-Controller`, keep available upstream license files, and add Jeh3no attribution to generated prototype scene metadata.

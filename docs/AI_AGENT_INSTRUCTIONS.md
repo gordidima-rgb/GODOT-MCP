@@ -17,3 +17,9 @@ If image or 3D generation providers are set to none, save generation jobs instea
 3. Run `godot_list_scenes`.
 4. Run `godot_check_errors`.
 5. Make the smallest useful change and report created or modified files.
+
+## Required Debug Workflow
+
+- If gameplay scripts changed, run the game or target scene, inspect the Godot console output, fix project errors, and rerun until the latest console has no errors.
+- If visible objects were added or placed in a scene, run the scene, capture a screenshot, inspect placement/visibility/scale/framing, fix issues, and repeat the screenshot check until it looks correct.
+- If Godot cannot run or screenshots cannot be captured in the current environment, report that validation limit clearly.

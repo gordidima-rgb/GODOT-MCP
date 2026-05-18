@@ -110,7 +110,7 @@ let runningGame = null;
 const tools = [
   tool("godot_help", "Discover available tool categories, workflows, safety modes, and usage templates.", {
     tool: { type: "string", description: "Optional exact tool name to describe." },
-    category: { type: "string", description: "Optional category: overview, workflows, coverage, safety, bridge, generation." },
+    category: { type: "string", description: "Optional category: overview, workflows, coverage, safety, bridge, generation, debug." },
     task: { type: "string", description: "Optional task description for a suggested tool chain." }
   }),
   tool("godot_doctor", "Run a beginner-friendly health check for project setup, bridge connectivity, providers, and expected folders.", {
@@ -504,6 +504,7 @@ async function godotHelp(args) {
     coverage: category === "overview" || category === "coverage" ? coverageHelp() : undefined,
     safety: category === "overview" || category === "safety" ? safetyHelp() : undefined,
     generation: category === "generation" ? generationHelp() : undefined,
+    debug: category === "overview" || category === "debug" ? debugHelp() : undefined,
     bridgeNotes: category === "overview" || category === "bridge" ? bridgeHelp() : undefined
   };
 }
@@ -1505,6 +1506,8 @@ function workflowHelp() {
     importSprite: ["godot_import_image", "godot_add_node", "godot_update_node", "godot_check_errors"],
     generationSafeMode: ["godot_generate_sprite/provider:none", "godot_generate_texture/provider:none", "godot_generate_3d_model/provider:none"],
     reviewGenerationJobs: ["godot_list_generation_jobs", "godot_update_generation_job_status"],
+    runtimeDebugAfterScripts: ["godot_check_errors/run_godot:true", "godot_run_project/dry_run:false", "inspect Godot console stdout/stderr", "fix errors", "rerun until console has no errors", "godot_stop_project"],
+    visualCheckAfterSceneObjects: ["godot_run_project/dry_run:false", "godot_capture_screenshot", "inspect placement/visibility/scale/framing", "fix scene", "repeat screenshot if needed", "godot_stop_project"],
     runtimeLoop: ["godot_run_project/dry_run:false", "godot_runtime_status", "godot_capture_screenshot", "godot_stop_project"],
     editorBridgeLoop: ["enable addons/ai_mcp_bridge", "godot_bridge_status", "godot_editor_scene_snapshot", "godot_run_project/mode:editor", "godot_stop_project/mode:editor"]
   };
@@ -1536,6 +1539,34 @@ function generationHelp() {
     defaultBehavior: "provider=none writes a job file under generation_jobs/ instead of calling a service.",
     realAdapters: ["openai image generation", "custom_http image generation"],
     declaredInterfaces: ["polza_ai", "local_comfyui", "tripo", "meshy"]
+  };
+}
+
+function debugHelp() {
+  return {
+    afterGameplayScriptChanges: {
+      required: true,
+      appliesTo: ["scene-attached .gd", "scripts/", "autoload gameplay code", "controller/input/physics/UI runtime logic"],
+      steps: [
+        "Run godot_check_errors with run_godot:true when Godot CLI is available.",
+        "Run the game or target scene with godot_run_project dry_run:false, or use the editor bridge.",
+        "Inspect the Godot console output from stdout/stderr/runtime status.",
+        "If project errors appear, fix them and run again.",
+        "Repeat until the latest Godot console output has no errors, then stop the game with godot_stop_project."
+      ],
+      completionRule: "Do not claim gameplay script changes are complete until the latest Godot console run has no errors. If Godot cannot run, report that blocker explicitly."
+    },
+    afterSceneObjectPlacement: {
+      requiredScreenshot: true,
+      appliesTo: ["adding visible objects", "moving objects", "scaling objects", "rotating objects", "placing imported or generated assets"],
+      steps: [
+        "Launch the game or target scene.",
+        "Capture a screenshot with godot_capture_screenshot or godot_capture_editor_viewport.",
+        "Inspect placement, visibility, scale, clipping, overlaps, material/import issues, and camera framing.",
+        "Fix problems and repeat the screenshot check until the placement looks correct."
+      ],
+      completionRule: "Do not claim placed scene objects are correct without a screenshot check, unless screenshot capture is unavailable and that limitation is reported."
+    }
   };
 }
 
